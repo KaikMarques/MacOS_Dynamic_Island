@@ -1,60 +1,92 @@
 import SwiftUI
 
-// Versão 3.9 - Brilho Intenso com Animação "Fast-Slow-Fast" e Delay de 1.5s
+// Versão 4.9 - Revelação Permanente "Silver & Gold" sobre Off-White
 struct AppleLogoComponent: View {
     let isExpanded: Bool
     @State private var lightPos: CGFloat = -1.5
     @State private var glowOpacity: Double = 0.0
     
-    // Cores P3 vibrantes para o efeito de fundo (Arco-Íris Apple)
-    private let rainbowColors: [Color] = [
-        Color(red: 0.95, green: 0.20, blue: 0.20),
-        Color(red: 1.00, green: 0.50, blue: 0.00),
-        Color(red: 1.00, green: 0.85, blue: 0.00),
-        Color(red: 0.20, green: 0.80, blue: 0.20),
-        Color(red: 0.00, green: 0.50, blue: 1.00),
-        Color(red: 0.60, green: 0.20, blue: 1.00)
+    // Tons metálicos premium (Silver/Platina)
+    private let silverColors: [Color] = [
+        Color(white: 0.4),
+        Color(white: 0.85),
+        Color(white: 0.6),
+        Color(white: 0.9),
+        Color(white: 0.5)
     ]
+    
+    private let goldColor = Color(red: 0.83, green: 0.69, blue: 0.22)
+    // Cor Off-White para o estado inicial
+    private let offWhite = Color(white: 0.92)
 
     var body: some View {
         ZStack {
-            // Logótipo em repouso (Branco sólido)
+            // 1. Base Inicial: Off-White (Visível antes da luz passar)
             Image(systemName: "applelogo")
                 .font(.system(size: 14, weight: .medium))
-                .foregroundStyle(isExpanded ? .white.opacity(0.12) : .white)
+                .foregroundStyle(isExpanded ? offWhite : .white)
             
             if isExpanded {
-                // Camada Arco-Íris (Fica visível após a expansão)
-                Image(systemName: "applelogo")
-                    .font(.system(size: 14, weight: .medium))
-                    .foregroundStyle(
-                        LinearGradient(
-                            colors: rainbowColors,
-                            startPoint: .topLeading,
-                            endPoint: .bottomTrailing
-                        )
+                ZStack {
+                    // 2. Camada Premium Revelada (Prata + Ouro)
+                    ZStack {
+                        Image(systemName: "applelogo")
+                            .font(.system(size: 14, weight: .medium))
+                            .foregroundStyle(
+                                LinearGradient(
+                                    colors: silverColors,
+                                    startPoint: .topLeading,
+                                    endPoint: .bottomTrailing
+                                )
+                            )
+                        
+                        GoldDotsPattern(color: goldColor)
+                            .mask(
+                                Image(systemName: "applelogo")
+                                    .font(.system(size: 14, weight: .medium))
+                            )
+                    }
+                    // MÁSCARA DE REVELAÇÃO PERMANENTE:
+                    // À medida que lightPos avança, esta máscara "abre" a cor premium
+                    .mask(
+                        GeometryReader { geo in
+                            Rectangle()
+                                .fill(
+                                    LinearGradient(
+                                        stops: [
+                                            .init(color: .black, location: 0),
+                                            .init(color: .black, location: 0.9), // Borda da revelação
+                                            .init(color: .clear, location: 1.0)
+                                        ],
+                                        startPoint: .leading,
+                                        endPoint: .trailing
+                                    )
+                                )
+                                .frame(width: geo.size.width * 2.5)
+                                // O offset move a "janela" de visibilidade junto com a luz
+                                .offset(x: (lightPos - 1.2) * geo.size.width)
+                        }
                     )
-                    // Brilho externo aumentado
-                    .shadow(color: .blue.opacity(0.45), radius: glowOpacity * 12, x: 0, y: 0)
-                    .transition(.opacity.combined(with: .scale(scale: 0.95)))
+                }
+                .shadow(color: goldColor.opacity(0.3 * glowOpacity), radius: 8, x: 0, y: 0)
                 
-                // Light Scan: O brilho de "vidro" intenso
+                // 3. O Feixe de Luz (O Scanner que transforma a cor)
                 GeometryReader { geo in
                     Rectangle()
                         .fill(
                             LinearGradient(
                                 colors: [
                                     .clear,
-                                    .white.opacity(0.4),
-                                    .white.opacity(1.0), // Brilho central máximo
-                                    .white.opacity(0.4),
+                                    .white.opacity(0.3),
+                                    .white.opacity(1.0), // Centro do brilho
+                                    .white.opacity(0.3),
                                     .clear
                                 ],
                                 startPoint: .leading,
                                 endPoint: .trailing
                             )
                         )
-                        .scaleEffect(x: 0.35)
+                        .scaleEffect(x: 0.4)
                         .rotationEffect(.degrees(-25))
                         .offset(x: lightPos * geo.size.width)
                         .mask(
@@ -64,17 +96,19 @@ struct AppleLogoComponent: View {
                         )
                 }
                 .onAppear {
-                    lightPos = -1.5
+                    // Reiniciar estados ao expandir
+                    lightPos = -1.8
                     glowOpacity = 0.0
                     
-                    // Curva customizada: Rápido-Lento-Rápido
-                    let customCurve = Animation.timingCurve(0.15, 0.85, 0.85, 0.15, duration: 2.0)
+                    // CURVA CUSTOMIZADA: Entrada rápida, MEIO MUITO LENTO (Slow Motion), Saída rápida
+                    // Aumentamos o tempo no centro (platô) para fixar a cor
+                    let extremeSlowCenter = Animation.timingCurve(0.1, 1.0, 0.9, 0.0, duration: 3.5)
                     
-                    withAnimation(customCurve.delay(1.5)) {
-                        lightPos = 2.5
+                    withAnimation(extremeSlowCenter.delay(1.5)) {
+                        lightPos = 2.8
                     }
                     
-                    withAnimation(.easeInOut(duration: 1.0).delay(1.5)) {
+                    withAnimation(.easeInOut(duration: 1.5).delay(1.5)) {
                         glowOpacity = 1.0
                     }
                 }
@@ -82,5 +116,26 @@ struct AppleLogoComponent: View {
         }
         .frame(width: 20, height: 20)
         .drawingGroup()
+    }
+}
+
+struct GoldDotsPattern: View {
+    let color: Color
+    var body: some View {
+        Canvas { context, size in
+            let dotSize: CGFloat = 1.0
+            let spacing: CGFloat = 3.0
+            for x in stride(from: 0, to: size.width, by: spacing) {
+                for y in stride(from: 0, to: size.height, by: spacing) {
+                    let rect = CGRect(
+                        x: x + CGFloat.random(in: -0.4...0.4),
+                        y: y + CGFloat.random(in: -0.4...0.4),
+                        width: dotSize,
+                        height: dotSize
+                    )
+                    context.fill(Path(ellipseIn: rect), with: .color(color))
+                }
+            }
+        }
     }
 }

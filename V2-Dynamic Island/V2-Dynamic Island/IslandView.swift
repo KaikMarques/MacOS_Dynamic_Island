@@ -1,6 +1,6 @@
 import SwiftUI
 
-// Versão 4.6 - Retorno à Cor Neumórfica com Top Black Ajustado (Pós-Logo)
+// Versão 4.5 - Black Out Estendido e Neumorfismo Ultra-Deep
 struct MacBookNotchShape: Shape {
     var isExpanded: Bool
     
@@ -57,33 +57,33 @@ struct IslandView: View {
     var body: some View {
         VStack(spacing: 0) {
             ZStack {
-                // 1. FUNDO: Reversão para a cor neumórfica (0.09) com transição pós-logo
+                // 1. FUNDO: Transição Deep Black -> Neumorphic Dark
                 MacBookNotchShape(isExpanded: isExpanded)
                     .fill(
                         LinearGradient(
                             stops: [
                                 .init(color: .black, location: 0),
-                                // PRETO ABSOLUTO: Mantido apenas até à zona do Apple Logo (aprox. 0.25)
-                                .init(color: .black, location: isExpanded ? 0.25 : 1.0),
-                                // Início da superfície neumórfica
-                                .init(color: Color(white: 0.05), location: isExpanded ? 0.50 : 1.0),
-                                // BASE: Retorno à cor da Versão 4.2 que gostaste
-                                .init(color: Color(white: 0.09), location: 1.0)
+                                // PRETO ABSOLUTO: Estendido até 45% da altura para cobrir o título "Sistema Operacional"
+                                .init(color: .black, location: isExpanded ? 0.45 : 1.0),
+                                // Início da transição sutil (Super escuro)
+                                .init(color: Color(white: 0.01), location: isExpanded ? 0.65 : 1.0),
+                                // BASE: A cor que você gostou, mas recalibrada para o fundo mais escuro
+                                .init(color: Color(white: 0.04), location: 1.0)
                             ],
                             startPoint: .top,
                             endPoint: .bottom
                         )
                     )
-                    .shadow(color: .black.opacity(isExpanded ? 0.6 : 0.3), radius: isExpanded ? 40 : 10, y: 15)
+                    .shadow(color: .black.opacity(isExpanded ? 0.7 : 0.3), radius: isExpanded ? 40 : 10, y: 15)
                 
-                // 2. BORDA: Highlight Neumórfico suave
+                // 2. BORDA: Highlight Neumórfico apenas na parte inferior
                 MacBookNotchShape(isExpanded: isExpanded)
                     .stroke(
                         LinearGradient(
                             stops: [
-                                .init(color: .white.opacity(0.15), location: 0),
-                                .init(color: .clear, location: 0.4),
-                                .init(color: .white.opacity(0.12), location: 1.0)
+                                .init(color: .white.opacity(0.12), location: 0),
+                                .init(color: .clear, location: 0.5), // Borda some na zona preta
+                                .init(color: .white.opacity(0.10), location: 1.0)
                             ],
                             startPoint: .top,
                             endPoint: .bottom
@@ -93,7 +93,7 @@ struct IslandView: View {
                 
                 // 3. CONTEÚDO
                 VStack(spacing: 0) {
-                    // Cabeçalho (Apple Logo & Sensores) - Zona de Preto Absoluto
+                    // Cabeçalho (Apple Logo & Sensores) - 100% PRETO
                     HStack(alignment: .center) {
                         AppleLogoComponent(isExpanded: isExpanded)
                             .scaleEffect(isExpanded ? 1.18 : (isHovered ? 1.08 : 1.0))
@@ -137,6 +137,7 @@ struct IslandView: View {
                     
                     if showContent {
                         VStack(alignment: .leading, spacing: 16) {
+                            // Título da seção (Ainda na zona de Preto Absoluto)
                             HStack {
                                 Text("SISTEMA OPERACIONAL")
                                     .font(.system(size: 8, weight: .black))
@@ -150,6 +151,7 @@ struct IslandView: View {
                             
                             Divider().background(Color.white.opacity(0.04))
                             
+                            // Esta zona começa a entrar no gradiente neumórfico
                             HStack(spacing: 30) {
                                 MonitorRow(label: "ECRÃ", value: "2560×1664", color: .blue)
                                 MonitorRow(label: "STATUS", value: "OTIMIZADO", color: .green)
