@@ -1,6 +1,6 @@
 import SwiftUI
 
-// Versão 4.5 - Black Out Estendido e Neumorfismo Ultra-Deep
+// Versão 4.8 - Dimensões Compactas e Expansão Calibrada
 struct MacBookNotchShape: Shape {
     var isExpanded: Bool
     
@@ -57,17 +57,14 @@ struct IslandView: View {
     var body: some View {
         VStack(spacing: 0) {
             ZStack {
-                // 1. FUNDO: Transição Deep Black -> Neumorphic Dark
+                // FUNDO: Neumorfismo v4.5 com Black Out e Novas Dimensões
                 MacBookNotchShape(isExpanded: isExpanded)
                     .fill(
                         LinearGradient(
                             stops: [
                                 .init(color: .black, location: 0),
-                                // PRETO ABSOLUTO: Estendido até 45% da altura para cobrir o título "Sistema Operacional"
                                 .init(color: .black, location: isExpanded ? 0.45 : 1.0),
-                                // Início da transição sutil (Super escuro)
                                 .init(color: Color(white: 0.01), location: isExpanded ? 0.65 : 1.0),
-                                // BASE: A cor que você gostou, mas recalibrada para o fundo mais escuro
                                 .init(color: Color(white: 0.04), location: 1.0)
                             ],
                             startPoint: .top,
@@ -76,13 +73,13 @@ struct IslandView: View {
                     )
                     .shadow(color: .black.opacity(isExpanded ? 0.7 : 0.3), radius: isExpanded ? 40 : 10, y: 15)
                 
-                // 2. BORDA: Highlight Neumórfico apenas na parte inferior
+                // BORDA: Highlight sutil
                 MacBookNotchShape(isExpanded: isExpanded)
                     .stroke(
                         LinearGradient(
                             stops: [
                                 .init(color: .white.opacity(0.12), location: 0),
-                                .init(color: .clear, location: 0.5), // Borda some na zona preta
+                                .init(color: .clear, location: 0.5),
                                 .init(color: .white.opacity(0.10), location: 1.0)
                             ],
                             startPoint: .top,
@@ -91,17 +88,16 @@ struct IslandView: View {
                         lineWidth: 0.8
                     )
                 
-                // 3. CONTEÚDO
                 VStack(spacing: 0) {
-                    // Cabeçalho (Apple Logo & Sensores) - 100% PRETO
                     HStack(alignment: .center) {
+                        // LOGO
                         AppleLogoComponent(isExpanded: isExpanded)
-                            .scaleEffect(isExpanded ? 1.18 : (isHovered ? 1.08 : 1.0))
-                            .offset(x: isExpanded ? 0 : 12)
+                            .scaleEffect(isExpanded ? 1.18 : (isHovered ? 1.05 : 1.0))
                         
                         Spacer()
                         
                         HStack(spacing: 12) {
+                            // Atividade Sonora
                             HStack(spacing: 2.8) {
                                 ForEach(0..<3) { i in
                                     RoundedRectangle(cornerRadius: 1.5)
@@ -117,27 +113,26 @@ struct IslandView: View {
                             }
                             .opacity(isExpanded ? 0 : 1)
                             
+                            // SENSORES
                             HStack(spacing: 7) {
                                 Circle()
                                     .fill(Color.green)
-                                    .frame(width: 7, height: 7)
+                                    .frame(width: 6, height: 6) // Ligeiramente menor para combinar com a nova altura
                                     .overlay(
                                         Circle()
-                                            .stroke(Color.green, lineWidth: 2)
+                                            .stroke(Color.green, lineWidth: 1.5)
                                             .scaleEffect(sensorPulse ? 1.8 : 1.0)
                                             .opacity(sensorPulse ? 0 : 0.5)
                                     )
-                                Circle().fill(Color.orange).frame(width: 7, height: 7)
+                                Circle().fill(Color.orange).frame(width: 6, height: 6)
                             }
                         }
-                        .offset(x: isExpanded ? 0 : -12)
                     }
-                    .padding(.horizontal, 24)
-                    .frame(height: 42)
+                    .padding(.horizontal, 22) // Ajustado de 28 para 22 para caber melhor na largura de 285
+                    .frame(height: isExpanded ? 42 : 37) // Transição suave de altura no header
                     
                     if showContent {
                         VStack(alignment: .leading, spacing: 16) {
-                            // Título da seção (Ainda na zona de Preto Absoluto)
                             HStack {
                                 Text("SISTEMA OPERACIONAL")
                                     .font(.system(size: 8, weight: .black))
@@ -151,7 +146,6 @@ struct IslandView: View {
                             
                             Divider().background(Color.white.opacity(0.04))
                             
-                            // Esta zona começa a entrar no gradiente neumórfico
                             HStack(spacing: 30) {
                                 MonitorRow(label: "ECRÃ", value: "2560×1664", color: .blue)
                                 MonitorRow(label: "STATUS", value: "OTIMIZADO", color: .green)
@@ -167,8 +161,9 @@ struct IslandView: View {
                 }
                 .animation(springResponse, value: isExpanded)
             }
-            .frame(width: isExpanded ? 410 : (isHovered ? 340 : 240),
-                   height: isExpanded ? 180 : 42)
+            // NOVAS DIMENSÕES: Mínimo 285x37 | Hover discreto | Expandido maior
+            .frame(width: isExpanded ? 440 : (isHovered ? 315 : 285),
+                   height: isExpanded ? 200 : 37)
             .onHover { hovering in
                 withAnimation(springResponse) {
                     isHovered = hovering
