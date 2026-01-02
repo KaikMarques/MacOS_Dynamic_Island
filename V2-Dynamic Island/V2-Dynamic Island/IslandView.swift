@@ -1,6 +1,6 @@
 import SwiftUI
 
-// Versão 4.8 - Dimensões Compactas e Expansão Calibrada
+// Versão 5.0 - Menu de Definições com Efeito de Vidro e Blur
 struct MacBookNotchShape: Shape {
     var isExpanded: Bool
     
@@ -52,29 +52,43 @@ struct IslandView: View {
     @State private var showContent = false
     @State private var sensorPulse = false
     
+    // Novo estado para o menu de definições
+    @State private var showSettings = false
+    
     private let springResponse = Animation.spring(response: 0.52, dampingFraction: 0.75)
 
     var body: some View {
         VStack(spacing: 0) {
             ZStack {
-                // FUNDO: Neumorfismo v4.5 com Black Out e Novas Dimensões
-                MacBookNotchShape(isExpanded: isExpanded)
-                    .fill(
-                        LinearGradient(
-                            stops: [
-                                .init(color: .black, location: 0),
-                                .init(color: .black, location: isExpanded ? 0.45 : 1.0),
-                                .init(color: Color(white: 0.01), location: isExpanded ? 0.65 : 1.0),
-                                .init(color: Color(white: 0.04), location: 1.0)
-                            ],
-                            startPoint: .top,
-                            endPoint: .bottom
+                // FUNDO DINÂMICO
+                ZStack {
+                    // Modo Normal: Gradiente Preto
+                    MacBookNotchShape(isExpanded: isExpanded)
+                        .fill(
+                            LinearGradient(
+                                stops: [
+                                    .init(color: .black, location: 0),
+                                    .init(color: .black, location: isExpanded ? 0.45 : 1.0),
+                                    .init(color: Color(white: 0.01), location: isExpanded ? 0.65 : 1.0),
+                                    .init(color: Color(white: 0.04), location: 1.0)
+                                ],
+                                startPoint: .top,
+                                endPoint: .bottom
+                            )
                         )
-                    )
-                    .shadow(color: .black.opacity(isExpanded ? 0.7 : 0.3), radius: isExpanded ? 40 : 10, y: 15)
+                        .opacity(showSettings ? 0 : 1)
+                    
+                    // Modo Definições: Efeito de Vidro (Ultra Thin Material)
+                    if showSettings {
+                        MacBookNotchShape(isExpanded: true)
+                            .fill(.ultraThinMaterial)
+                            .transition(.opacity)
+                    }
+                }
+                .shadow(color: .black.opacity(isExpanded ? 0.7 : 0.3), radius: isExpanded ? 40 : 10, y: 15)
                 
                 // BORDA: Highlight sutil
-                MacBookNotchShape(isExpanded: isExpanded)
+                MacBookNotchShape(isExpanded: isExpanded || showSettings)
                     .stroke(
                         LinearGradient(
                             stops: [
@@ -90,9 +104,15 @@ struct IslandView: View {
                 
                 VStack(spacing: 0) {
                     HStack(alignment: .center) {
-                        // LOGO
-                        AppleLogoComponent(isExpanded: isExpanded)
-                            .scaleEffect(isExpanded ? 1.18 : (isHovered ? 1.05 : 1.0))
+                        // LOGO com gatilho de definições
+                        AppleLogoComponent(isExpanded: isExpanded || showSettings) {
+                            withAnimation(springResponse) {
+                                if isExpanded {
+                                    showSettings.toggle()
+                                }
+                            }
+                        }
+                        .scaleEffect((isExpanded || showSettings) ? 1.18 : (isHovered ? 1.05 : 1.0))
                         
                         Spacer()
                         
@@ -111,13 +131,13 @@ struct IslandView: View {
                                         )
                                 }
                             }
-                            .opacity(isExpanded ? 0 : 1)
+                            .opacity((isExpanded || showSettings) ? 0 : 1)
                             
                             // SENSORES
                             HStack(spacing: 7) {
                                 Circle()
                                     .fill(Color.green)
-                                    .frame(width: 6, height: 6) // Ligeiramente menor para combinar com a nova altura
+                                    .frame(width: 6, height: 6)
                                     .overlay(
                                         Circle()
                                             .stroke(Color.green, lineWidth: 1.5)
@@ -128,27 +148,53 @@ struct IslandView: View {
                             }
                         }
                     }
-                    .padding(.horizontal, 22) // Ajustado de 28 para 22 para caber melhor na largura de 285
-                    .frame(height: isExpanded ? 42 : 37) // Transição suave de altura no header
+                    .padding(.horizontal, 22)
+                    .frame(height: (isExpanded || showSettings) ? 42 : 37)
                     
-                    if showContent {
-                        VStack(alignment: .leading, spacing: 16) {
-                            HStack {
-                                Text("SISTEMA OPERACIONAL")
-                                    .font(.system(size: 8, weight: .black))
-                                    .foregroundStyle(.white.opacity(0.35))
-                                    .tracking(2.5)
-                                Spacer()
-                                Image(systemName: "cpu.fill")
-                                    .font(.system(size: 10))
-                                    .foregroundStyle(.white.opacity(0.15))
+                    if showContent || showSettings {
+                        ZStack {
+                            // CONTEÚDO ORIGINAL (COM BLUR SE SETTINGS ATIVO)
+                            VStack(alignment: .leading, spacing: 16) {
+                                HStack {
+                                    Text("SISTEMA OPERACIONAL")
+                                        .font(.system(size: 8, weight: .black))
+                                        .foregroundStyle(.white.opacity(0.35))
+                                        .tracking(2.5)
+                                    Spacer()
+                                    Image(systemName: "cpu.fill")
+                                        .font(.system(size: 10))
+                                        .foregroundStyle(.white.opacity(0.15))
+                                }
+                                
+                                Divider().background(Color.white.opacity(0.04))
+                                
+                                HStack(spacing: 30) {
+                                    MonitorRow(label: "ECRÃ", value: "2560×1664", color: .blue)
+                                    MonitorRow(label: "STATUS", value: "OTIMIZADO", color: .green)
+                                }
                             }
+                            .blur(radius: showSettings ? 10 : 0) // Efeito de Blur pedido
                             
-                            Divider().background(Color.white.opacity(0.04))
-                            
-                            HStack(spacing: 30) {
-                                MonitorRow(label: "ECRÃ", value: "2560×1664", color: .blue)
-                                MonitorRow(label: "STATUS", value: "OTIMIZADO", color: .green)
+                            // MENU DE DEFINIÇÕES (SOBREPOSTO)
+                            if showSettings {
+                                VStack(spacing: 12) {
+                                    Text("CONFIGURAÇÕES")
+                                        .font(.system(size: 10, weight: .bold))
+                                        .foregroundStyle(.white)
+                                    
+                                    HStack(spacing: 20) {
+                                        VStack {
+                                            Image(systemName: "circle.grid.cross.fill")
+                                            Text("Sensores").font(.system(size: 8))
+                                        }
+                                        VStack {
+                                            Image(systemName: "gauge.with.needle.fill")
+                                            Text("Velocidade").font(.system(size: 8))
+                                        }
+                                    }
+                                    .foregroundStyle(.white.opacity(0.8))
+                                }
+                                .transition(.scale.combined(with: .opacity))
                             }
                         }
                         .padding(.horizontal, 28)
@@ -160,22 +206,30 @@ struct IslandView: View {
                     }
                 }
                 .animation(springResponse, value: isExpanded)
+                .animation(springResponse, value: showSettings)
             }
-            // NOVAS DIMENSÕES: Mínimo 285x37 | Hover discreto | Expandido maior
-            .frame(width: isExpanded ? 440 : (isHovered ? 315 : 285),
-                   height: isExpanded ? 200 : 37)
+            .frame(width: (isExpanded || showSettings) ? 440 : (isHovered ? 315 : 285),
+                   height: (isExpanded || showSettings) ? 200 : 37)
             .onHover { hovering in
-                withAnimation(springResponse) {
-                    isHovered = hovering
-                    if !hovering {
-                        showContent = false
-                        isExpanded = false
+                // Só fecha no hover se o menu de definições não estiver aberto
+                if !showSettings {
+                    withAnimation(springResponse) {
+                        isHovered = hovering
+                        if !hovering {
+                            showContent = false
+                            isExpanded = false
+                        }
                     }
                 }
             }
             .onTapGesture {
+                // Toque principal fecha o menu se estiver aberto, ou expande a ilha
                 withAnimation(springResponse) {
-                    isExpanded.toggle()
+                    if showSettings {
+                        showSettings = false
+                    } else {
+                        isExpanded.toggle()
+                    }
                 }
             }
             .onAppear {
@@ -194,6 +248,7 @@ struct IslandView: View {
                     }
                 } else {
                     showContent = false
+                    showSettings = false // Fecha definições se recolher
                 }
             }
             Spacer()
