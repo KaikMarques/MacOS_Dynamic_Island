@@ -1,121 +1,129 @@
 import SwiftUI
 
-// Versão 4.9 - Revelação Permanente "Silver & Gold" sobre Off-White
+// Versão 5.1 - Revelação "Liquid Paint" com Estabilidade de Estado
 struct AppleLogoComponent: View {
     let isExpanded: Bool
+    
+    // Estados internos para controlar a animação de varredura e revelação
     @State private var lightPos: CGFloat = -1.5
     @State private var glowOpacity: Double = 0.0
+    @State private var revealProgress: CGFloat = 0.0
     
-    // Tons metálicos premium (Silver/Platina)
     private let silverColors: [Color] = [
-        Color(white: 0.4),
-        Color(white: 0.85),
-        Color(white: 0.6),
-        Color(white: 0.9),
-        Color(white: 0.5)
+        Color(white: 0.45),
+        Color(white: 0.90),
+        Color(white: 0.65),
+        Color(white: 0.95),
+        Color(white: 0.55)
     ]
     
-    private let goldColor = Color(red: 0.83, green: 0.69, blue: 0.22)
-    // Cor Off-White para o estado inicial
-    private let offWhite = Color(white: 0.92)
+    private let goldColor = Color(red: 0.85, green: 0.72, blue: 0.25)
+    private let offWhite = Color(white: 0.90)
 
     var body: some View {
         ZStack {
-            // 1. Base Inicial: Off-White (Visível antes da luz passar)
+            // 1. CAMADA BASE: Off-White (Visível quando expandido, antes da revelação)
             Image(systemName: "applelogo")
                 .font(.system(size: 14, weight: .medium))
                 .foregroundStyle(isExpanded ? offWhite : .white)
             
-            if isExpanded {
-                ZStack {
-                    // 2. Camada Premium Revelada (Prata + Ouro)
-                    ZStack {
+            // 2. CAMADA PREMIUM: Silver & Gold (Revelada permanentemente pela luz)
+            ZStack {
+                Image(systemName: "applelogo")
+                    .font(.system(size: 14, weight: .medium))
+                    .foregroundStyle(
+                        LinearGradient(
+                            colors: silverColors,
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        )
+                    )
+                
+                GoldDotsPattern(color: goldColor)
+                    .mask(
                         Image(systemName: "applelogo")
                             .font(.system(size: 14, weight: .medium))
-                            .foregroundStyle(
-                                LinearGradient(
-                                    colors: silverColors,
-                                    startPoint: .topLeading,
-                                    endPoint: .bottomTrailing
-                                )
-                            )
-                        
-                        GoldDotsPattern(color: goldColor)
-                            .mask(
-                                Image(systemName: "applelogo")
-                                    .font(.system(size: 14, weight: .medium))
-                            )
-                    }
-                    // MÁSCARA DE REVELAÇÃO PERMANENTE:
-                    // À medida que lightPos avança, esta máscara "abre" a cor premium
-                    .mask(
-                        GeometryReader { geo in
-                            Rectangle()
-                                .fill(
-                                    LinearGradient(
-                                        stops: [
-                                            .init(color: .black, location: 0),
-                                            .init(color: .black, location: 0.9), // Borda da revelação
-                                            .init(color: .clear, location: 1.0)
-                                        ],
-                                        startPoint: .leading,
-                                        endPoint: .trailing
-                                    )
-                                )
-                                .frame(width: geo.size.width * 2.5)
-                                // O offset move a "janela" de visibilidade junto com a luz
-                                .offset(x: (lightPos - 1.2) * geo.size.width)
-                        }
                     )
-                }
-                .shadow(color: goldColor.opacity(0.3 * glowOpacity), radius: 8, x: 0, y: 0)
-                
-                // 3. O Feixe de Luz (O Scanner que transforma a cor)
-                GeometryReader { geo in
-                    Rectangle()
-                        .fill(
-                            LinearGradient(
-                                colors: [
-                                    .clear,
-                                    .white.opacity(0.3),
-                                    .white.opacity(1.0), // Centro do brilho
-                                    .white.opacity(0.3),
-                                    .clear
-                                ],
-                                startPoint: .leading,
-                                endPoint: .trailing
-                            )
-                        )
-                        .scaleEffect(x: 0.4)
-                        .rotationEffect(.degrees(-25))
-                        .offset(x: lightPos * geo.size.width)
-                        .mask(
-                            Image(systemName: "applelogo")
-                                .font(.system(size: 14, weight: .medium))
-                                .position(x: geo.size.width/2, y: geo.size.height/2)
-                        )
-                }
-                .onAppear {
-                    // Reiniciar estados ao expandir
-                    lightPos = -1.8
-                    glowOpacity = 0.0
-                    
-                    // CURVA CUSTOMIZADA: Entrada rápida, MEIO MUITO LENTO (Slow Motion), Saída rápida
-                    // Aumentamos o tempo no centro (platô) para fixar a cor
-                    let extremeSlowCenter = Animation.timingCurve(0.1, 1.0, 0.9, 0.0, duration: 3.5)
-                    
-                    withAnimation(extremeSlowCenter.delay(1.5)) {
-                        lightPos = 2.8
-                    }
-                    
-                    withAnimation(.easeInOut(duration: 1.5).delay(1.5)) {
-                        glowOpacity = 1.0
-                    }
-                }
             }
+            .opacity(isExpanded ? 1 : 0)
+            // MÁSCARA DE REVELAÇÃO: Um retângulo que escala para a direita conforme a luz passa
+            .mask(
+                Rectangle()
+                    // O progresso da escala segue a posição da luz para "pintar" o logo
+                    .scaleEffect(x: revealProgress, y: 1.0, anchor: .leading)
+            )
+            .shadow(color: goldColor.opacity(0.35 * glowOpacity), radius: 6, x: 0, y: 0)
+            
+            // 3. O FEIXE DE LUZ (A ferramenta que revela a cor)
+            GeometryReader { geo in
+                Rectangle()
+                    .fill(
+                        LinearGradient(
+                            colors: [
+                                .clear,
+                                .white.opacity(0.4),
+                                .white.opacity(1.0), // Brilho central
+                                .white.opacity(0.4),
+                                .clear
+                            ],
+                            startPoint: .leading,
+                            endPoint: .trailing
+                        )
+                    )
+                    .scaleEffect(x: 0.45)
+                    .rotationEffect(.degrees(-25))
+                    .offset(x: lightPos * geo.size.width)
+                    .mask(
+                        Image(systemName: "applelogo")
+                            .font(.system(size: 14, weight: .medium))
+                            .position(x: geo.size.width/2, y: geo.size.height/2)
+                    )
+            }
+            .opacity(isExpanded ? 1 : 0)
         }
         .frame(width: 20, height: 20)
         .drawingGroup()
+        // Sincronização da animação quando o estado de expansão muda
+        .onChange(of: isExpanded) { oldValue, newValue in
+            if newValue {
+                startAnimation()
+            } else {
+                resetAnimation()
+            }
+        }
+    }
+    
+    private func startAnimation() {
+        // Reset inicial antes de começar
+        lightPos = -1.5
+        revealProgress = 0.0
+        glowOpacity = 0.0
+        
+        // Curva Rápida-Lenta-Rápida com Slow Motion estendido no centro
+        let slowMotionCurve = Animation.timingCurve(0.1, 0.9, 0.9, 0.1, duration: 3.8)
+        
+        // Dispara a varredura de luz
+        withAnimation(slowMotionCurve.delay(1.5)) {
+            lightPos = 2.5
+        }
+        
+        // Dispara a revelação da cor (O retângulo de máscara crescendo)
+        withAnimation(slowMotionCurve.delay(1.5)) {
+            // revealProgress vai para 1.5 para garantir que cubra 100% da largura
+            revealProgress = 1.5
+        }
+        
+        // Suavização do brilho/glow
+        withAnimation(.easeInOut(duration: 1.5).delay(1.5)) {
+            glowOpacity = 1.0
+        }
+    }
+    
+    private func resetAnimation() {
+        // Quando fecha, reseta tudo sem animação para estar pronto para a próxima
+        lightPos = -1.5
+        revealProgress = 0.0
+        glowOpacity = 0.0
     }
 }
 
