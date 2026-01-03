@@ -19,6 +19,39 @@ struct MonitorRow: View {
     }
 }
 
+// --- NOVO COMPONENTE DE BOTÃO DO MENU ---
+struct MenuButton: View {
+    let icon: String
+    let label: String
+    var color: Color = .white
+    
+    var body: some View {
+        VStack(spacing: 8) {
+            ZStack {
+                Circle()
+                    .fill(Color.white.opacity(0.1))
+                    .frame(width: 38, height: 38)
+                
+                Image(systemName: icon)
+                    .font(.system(size: 15, weight: .medium))
+                    .foregroundStyle(color)
+            }
+            
+            Text(label)
+                .font(.system(size: 10, weight: .medium))
+                .foregroundStyle(.white.opacity(0.9))
+        }
+        .frame(height: 70)
+        .frame(maxWidth: .infinity)
+        .background(Color.white.opacity(0.05))
+        .cornerRadius(16)
+        .overlay(
+            RoundedRectangle(cornerRadius: 16)
+                .stroke(Color.white.opacity(0.1), lineWidth: 0.5)
+        )
+    }
+}
+
 // Versão 5.7 - Topo Invisível
 struct MacBookNotchShape: Shape {
     var isExpanded: Bool
@@ -120,6 +153,10 @@ struct IslandView: View {
                             .stroke(lineWidth: 1.2)
                     )
                     .blendMode(.screen)
+                    // AJUSTE: Reduz drasticamente a opacidade quando ativo.
+                    // Em repouso (false) mantém 1.0 para a linha cinza visível.
+                    // Quando ativo (true), cai para 0.35 para que o brilho forte do Metal fique suave.
+                    .opacity((isHovered || isExpanded || showSettings) ? 0.35 : 1.0)
                 
                 // 3. CONTEÚDO
                 VStack(spacing: 0) {
@@ -194,25 +231,36 @@ struct IslandView: View {
                             }
                             .blur(radius: showSettings ? 10 : 0)
                             
+                            // --- MENU DE BOTÕES (GRID) ---
                             if showSettings {
-                                VStack(spacing: 12) {
-                                    Text("CONFIGURAÇÕES")
-                                        .font(.system(size: 10, weight: .bold))
-                                        .foregroundStyle(.white)
-                                    
-                                    HStack(spacing: 20) {
-                                        VStack {
-                                            Image(systemName: "circle.grid.cross.fill")
-                                            Text("Sensores").font(.system(size: 8))
-                                        }
-                                        VStack {
-                                            Image(systemName: "gauge.with.needle.fill")
-                                            Text("Velocidade").font(.system(size: 8))
-                                        }
+                                VStack(spacing: 14) {
+                                    HStack {
+                                        Text("CONTROLES")
+                                            .font(.system(size: 9, weight: .bold))
+                                            .foregroundStyle(.white.opacity(0.5))
+                                            .tracking(1)
+                                        Spacer()
                                     }
-                                    .foregroundStyle(.white.opacity(0.8))
+                                    .padding(.leading, 4)
+                                    
+                                    LazyVGrid(columns: [
+                                        GridItem(.flexible(), spacing: 12),
+                                        GridItem(.flexible(), spacing: 12),
+                                        GridItem(.flexible(), spacing: 12)
+                                    ], spacing: 12) {
+                                        // Linha 1
+                                        MenuButton(icon: "lock.fill", label: "Bloquear")
+                                        MenuButton(icon: "moon.zzz.fill", label: "Repouso", color: .indigo)
+                                        MenuButton(icon: "display", label: "Tela")
+                                        
+                                        // Linha 2
+                                        MenuButton(icon: "gearshape.fill", label: "Ajustes")
+                                        MenuButton(icon: "arrow.clockwise", label: "Reiniciar")
+                                        MenuButton(icon: "power", label: "Desligar", color: .red)
+                                    }
                                 }
-                                .transition(.scale.combined(with: .opacity))
+                                .padding(.top, 5)
+                                .transition(.scale(scale: 0.95).combined(with: .opacity))
                             }
                         }
                         .padding(.horizontal, 28)
@@ -227,7 +275,7 @@ struct IslandView: View {
                 .animation(springResponse, value: showSettings)
             }
             .frame(width: (isExpanded || showSettings) ? 440 : (isHovered ? 315 : 285),
-                   height: (isExpanded || showSettings) ? 200 : 37)
+                   height: (isExpanded || showSettings) ? 230 : 37) // Aumentei levemente a altura para caber os botões
             .onHover { hovering in
                 if !showSettings {
                     withAnimation(springResponse) {
@@ -264,7 +312,7 @@ struct IslandView: View {
                     }
                 } else {
                     showContent = false
-                    showSettings = false
+                    showSettings = false // Fecha definições se recolher
                 }
             }
             Spacer()
