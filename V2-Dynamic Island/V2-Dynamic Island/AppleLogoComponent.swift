@@ -1,14 +1,18 @@
 import SwiftUI
 
-// Versão 5.1 - Revelação "Liquid Paint" com Gatilho de Toque para Definições
+// Versão 5.5 - Neon "Espesso" com Respiração Lenta
 struct AppleLogoComponent: View {
     let isExpanded: Bool
-    // Adicionamos um callback para avisar a IslandView que o logo foi clicado
+    let isSettingsOpen: Bool
+    
     var onTap: (() -> Void)? = nil
     
     @State private var lightPos: CGFloat = -1.5
     @State private var glowOpacity: Double = 0.0
     @State private var revealProgress: CGFloat = 0.0
+    
+    // Intensidade inicial
+    @State private var pulseIntensity: Double = 0.6
     
     private let silverColors: [Color] = [
         Color(white: 0.45),
@@ -28,7 +32,7 @@ struct AppleLogoComponent: View {
                 .font(.system(size: 14, weight: .medium))
                 .foregroundStyle(isExpanded ? offWhite : .white)
             
-            // 2. CAMADA PREMIUM
+            // 2. CAMADA PREMIUM (O Logo Metálico)
             ZStack {
                 Image(systemName: "applelogo")
                     .font(.system(size: 14, weight: .medium))
@@ -51,9 +55,52 @@ struct AppleLogoComponent: View {
                 Rectangle()
                     .scaleEffect(x: revealProgress, y: 1.0, anchor: .leading)
             )
-            .shadow(color: goldColor.opacity(0.35 * glowOpacity), radius: 6, x: 0, y: 0)
+            // --- GLOW DE AMBIENTE (O que ilumina o fundo) ---
+            .shadow(
+                color: isSettingsOpen
+                    ? .white.opacity(0.8 * pulseIntensity) // Aumentado a base
+                    : goldColor.opacity(0.35 * glowOpacity),
+                radius: isSettingsOpen ? 12 : 6,
+                x: 0,
+                y: 0
+            )
+            .shadow(
+                color: isSettingsOpen
+                    ? .white.opacity(0.5 * pulseIntensity)
+                    : .clear,
+                radius: isSettingsOpen ? 35 : 0, // Raio maior para espalhar mais
+                x: 0,
+                y: 0
+            )
             
-            // 3. O FEIXE DE LUZ
+            // 3. CAMADA DE NEON ESPESSO (NOVO DESIGN)
+            if isSettingsOpen {
+                ZStack {
+                    // Núcleo Sólido (O fio do filamento)
+                    Image(systemName: "applelogo")
+                        .font(.system(size: 14, weight: .medium))
+                        .foregroundStyle(.white)
+                        .blur(radius: 0.6)
+                    
+                    // Corpo do Neon (A luz espessa ao redor do fio)
+                    Image(systemName: "applelogo")
+                        .font(.system(size: 14, weight: .medium))
+                        .foregroundStyle(.white)
+                        .blur(radius: 3.0) // Aumentado para dar "corpo"
+                        .opacity(1.0)
+
+                    // Aura Externa (O gás ionizado em volta)
+                    Image(systemName: "applelogo")
+                        .font(.system(size: 14, weight: .medium))
+                        .foregroundStyle(.white)
+                        .blur(radius: 6.0)
+                        .opacity(0.8)
+                }
+                .opacity(pulseIntensity)
+                .blendMode(.screen)
+            }
+            
+            // 4. O FEIXE DE LUZ (Animação de entrada original)
             GeometryReader { geo in
                 Rectangle()
                     .fill(
@@ -81,7 +128,7 @@ struct AppleLogoComponent: View {
             .opacity(isExpanded ? 1 : 0)
         }
         .frame(width: 20, height: 20)
-        .contentShape(Rectangle()) // Melhora a área de toque
+        .contentShape(Rectangle())
         .onTapGesture {
             onTap?()
         }
@@ -90,6 +137,19 @@ struct AppleLogoComponent: View {
                 startAnimation()
             } else {
                 resetAnimation()
+            }
+        }
+        .onChange(of: isSettingsOpen) { oldValue, newValue in
+            if newValue {
+                // MUDANÇA CRÍTICA: Duração aumentada para 2.5s (Respiração Lenta)
+                // Intensity aumentada para 2.0 (Brilho Extremo no pico)
+                withAnimation(.easeInOut(duration: 2.5).repeatForever(autoreverses: true)) {
+                    pulseIntensity = 2.0
+                }
+            } else {
+                withAnimation(.easeOut(duration: 0.5)) {
+                    pulseIntensity = 0.6
+                }
             }
         }
     }
@@ -115,6 +175,7 @@ struct AppleLogoComponent: View {
         lightPos = -1.5
         revealProgress = 0.0
         glowOpacity = 0.0
+        pulseIntensity = 0.6
     }
 }
 

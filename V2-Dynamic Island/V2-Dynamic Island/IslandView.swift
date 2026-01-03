@@ -1,6 +1,6 @@
 import SwiftUI
 
-// Versão 5.0 - Menu de Definições com Efeito de Vidro e Blur
+// Versão 5.7 - Topo Invisível (Sem borda no Notch Físico)
 struct MacBookNotchShape: Shape {
     var isExpanded: Bool
     
@@ -62,15 +62,16 @@ struct IslandView: View {
             ZStack {
                 // FUNDO DINÂMICO
                 ZStack {
-                    // Modo Normal: Gradiente Preto
+                    // Modo Normal: Gradiente Preto Ajustado
                     MacBookNotchShape(isExpanded: isExpanded)
                         .fill(
                             LinearGradient(
                                 stops: [
                                     .init(color: .black, location: 0),
-                                    .init(color: .black, location: isExpanded ? 0.45 : 1.0),
-                                    .init(color: Color(white: 0.01), location: isExpanded ? 0.65 : 1.0),
-                                    .init(color: Color(white: 0.04), location: 1.0)
+                                    // Mantém preto puro até 85% da altura para garantir solidez
+                                    .init(color: .black, location: isExpanded ? 0.85 : 1.0),
+                                    // O gradiente sutil aparece apenas na borda inferior para dar profundidade
+                                    .init(color: Color(white: 0.08), location: 1.0)
                                 ],
                                 startPoint: .top,
                                 endPoint: .bottom
@@ -87,14 +88,19 @@ struct IslandView: View {
                 }
                 .shadow(color: .black.opacity(isExpanded ? 0.7 : 0.3), radius: isExpanded ? 40 : 10, y: 15)
                 
-                // BORDA: Highlight sutil
+                // BORDA: Highlight sutil (AJUSTADO: Topo Transparente)
                 MacBookNotchShape(isExpanded: isExpanded || showSettings)
                     .stroke(
                         LinearGradient(
                             stops: [
-                                .init(color: .white.opacity(0.12), location: 0),
-                                .init(color: .clear, location: 0.5),
-                                .init(color: .white.opacity(0.10), location: 1.0)
+                                // MUDANÇA: Começa transparente para não marcar o notch físico
+                                .init(color: .clear, location: 0.0),
+                                .init(color: .clear, location: 0.2), // Garante invisibilidade na área superior
+                                
+                                // O brilho começa suavemente do meio para baixo
+                                .init(color: .white.opacity(0.12), location: 0.4),
+                                .init(color: .white.opacity(0.05), location: 0.7),
+                                .init(color: .white.opacity(0.15), location: 1.0)
                             ],
                             startPoint: .top,
                             endPoint: .bottom
@@ -105,7 +111,11 @@ struct IslandView: View {
                 VStack(spacing: 0) {
                     HStack(alignment: .center) {
                         // LOGO com gatilho de definições
-                        AppleLogoComponent(isExpanded: isExpanded || showSettings) {
+                        // Atualizado para passar o estado isSettingsOpen
+                        AppleLogoComponent(
+                            isExpanded: isExpanded || showSettings,
+                            isSettingsOpen: showSettings
+                        ) {
                             withAnimation(springResponse) {
                                 if isExpanded {
                                     showSettings.toggle()
