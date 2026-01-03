@@ -2,7 +2,6 @@ import SwiftUI
 import MetalKit
 
 // MARK: - Metal Shader Source (MSL)
-// Define a lógica de renderização na GPU.
 let auroraShaderSource = """
 #include <metal_stdlib>
 using namespace metal;
@@ -19,17 +18,17 @@ struct VertexOut {
 
 struct Uniforms {
     float time;
-    float isActive; // 0.0 = Repouso, 1.0 = Ativo
+    float progress;   // 0.0 a 1.0 (Controlado pelo Swift com curva Rápido-Lento-Rápido)
+    float isActive;   // Estado geral para fade-in da borda
     float2 resolution;
 };
 
 vertex VertexOut vertex_main(uint vertexID [[vertex_id]],
                              constant float4 *vertices [[buffer(0)]]) {
     VertexOut out;
-    // Quadrado simples para cobrir a área da view
     float2 positions[4] = { float2(-1, -1), float2(1, -1), float2(-1, 1), float2(1, 1) };
     out.position = float4(positions[vertexID], 0.0, 1.0);
-    out.uv = positions[vertexID] * 0.5 + 0.5; // Normaliza coordenadas 0..1
+    out.uv = positions[vertexID] * 0.5 + 0.5;
     return out;
 }
 
@@ -37,46 +36,60 @@ fragment float4 fragment_main(VertexOut in [[stage_in]],
                               constant Uniforms &uniforms [[buffer(0)]]) {
     
     float2 uv = in.uv;
-    float t = uniforms.time;
-    float active = uniforms.isActive; // Controla a transição suave
+    float p = uniforms.progress;
+    float active = uniforms.isActive;
     
-    // --- MODO REPOUSO (Cor Sólida) ---
-    // Cor #334155 (Slate 700) convertida para RGB normalizado (0..1)
-    // R: 51/255 = 0.2
-    // G: 65/255 = 0.255
-    // B: 85/255 = 0.333
+    // Cor da linha em repouso (Cinza Discreto)
     float3 restingColor = float3(0.2, 0.255, 0.333);
     
-    // --- MODO ATIVO (Aurora Animada) ---
-    // Cores vibrantes
-    float3 c1 = float3(0.1, 0.5, 0.9); // Azul elétrico
-    float3 c2 = float3(0.6, 0.1, 0.8); // Roxo profundo
-    float3 c3 = float3(0.1, 0.8, 0.7); // Ciano neon
+    // Se a animação acabou (p=0 ou p=1), retorna apenas a cor de repouso (ou branco se estiver ativo)
+    if (p <= 0.001 || p >= 0.999) {
+        float3 steadyColor = mix(restingColor, float3(0.6), active); // Branco suave se mouse estiver em cima
+        return float4(steadyColor, 1.0);
+    }
     
-    // Ondas senoidais para criar movimento orgânico
-    float wave1 = sin(uv.x * 5.0 + t * 1.5) * 0.5 + 0.5;
-    float wave2 = cos(uv.y * 3.0 - t * 2.0) * 0.5 + 0.5;
-    float wave3 = sin((uv.x + uv.y) * 4.0 - t) * 0.5 + 0.5;
+    // --- EFEITO DE LINHAS COLORIDAS (BURST) ---
     
-    // Mistura as cores baseada nas ondas
-    float3 activeColor = mix(c1, c2, wave1);
-    activeColor = mix(activeColor, c3, wave2 * wave3);
+    // Cores Neon
+    float3 c1 = float3(0.0, 1.0, 1.0); // Ciano Puro
+    float3 c2 = float3(1.0, 0.0, 1.0); // Magenta Puro
+    float3 c3 = float3(0.0, 0.5, 1.0); // Azul Elétrico
     
-    // Adiciona um "brilho" (scanline) que passa
-    float shine = smoothstep(0.45, 0.55, sin(uv.x * 2.0 + uv.y - t * 3.0) * 0.5 + 0.5);
-    activeColor += float3(0.3) * shine;
+    // Posição do feixe de luz baseada no progresso
+    // Mapeia 0..1 para varrer a tela da esquerda para direita (com margem)
+    float scanPos = (p * 3.0) - 1.0; 
+    
+    // Cria padrões de ondas/linhas
+    float wave1 = sin(uv.x * 10.0 + uniforms.time * 5.0) * 0.5 + 0.5;
+    float wave2 = cos(uv.y * 8.0 - uniforms.time * 3.0) * 0.5 + 0.5;
+    
+    // Mistura cores
+    float3 burstColor = mix(c1, c2, wave1);
+    burstColor = mix(burstColor, c3, wave2);
+    
+    // MÁSCARA DO FEIXE (Shape do brilho que passa)
+    // Calcula a distância do pixel para o centro do feixe
+    float dist = abs((uv.x + uv.y * 0.2) - scanPos);
+    
+    // Glow intenso e estreito
+    float glow = exp(-dist * 4.0);
+    
+    // Corta o glow nas bordas da animação para não aparecer do nada
+    float fadeEdge = smoothstep(0.0, 0.1, p) * smoothstep(1.0, 0.9, p);
+    
+    // --- COMBINAÇÃO ---
+    // Começa com a cor base
+    float3 finalColor = mix(restingColor, float3(0.5), active);
+    
+    // Adiciona o estouro de cor por cima (Additivity)
+    finalColor += burstColor * glow * fadeEdge * 2.5; // * 2.5 para brilho forte
 
-    // --- MISTURA FINAL ---
-    // Interpola entre o cinza sólido e a aurora baseado na atividade
-    float3 finalColor = mix(restingColor, activeColor, active);
-    
     return float4(finalColor, 1.0);
 }
 """
 
-// MARK: - SwiftUI Bridge (macOS)
 struct AuroraBackground: NSViewRepresentable {
-    var isActive: Bool // Estado vindo do SwiftUI
+    var isActive: Bool // Gatilho (Hover ou Expandido)
     
     func makeCoordinator() -> Coordinator {
         Coordinator(self)
@@ -87,22 +100,24 @@ struct AuroraBackground: NSViewRepresentable {
         mtkView.delegate = context.coordinator
         mtkView.device = context.coordinator.device
         mtkView.framebufferOnly = true
-        mtkView.enableSetNeedsDisplay = false // Renderização contínua pelo CADisplayLink interno
+        mtkView.enableSetNeedsDisplay = false
         mtkView.isPaused = false
         mtkView.clearColor = MTLClearColor(red: 0, green: 0, blue: 0, alpha: 0)
-        
-        // Garante que o layer suporte transparência
         mtkView.layer?.isOpaque = false
-        
         return mtkView
     }
     
     func updateNSView(_ nsView: MTKView, context: Context) {
-        // Atualiza o alvo da animação no Coordinator
-        context.coordinator.targetActiveState = isActive ? 1.0 : 0.0
+        // Se o estado mudou para ATIVO, dispara a animação
+        if isActive && !context.coordinator.wasActiveLastFrame {
+            context.coordinator.triggerOneShotAnimation()
+        }
+        context.coordinator.wasActiveLastFrame = isActive
+        
+        // Atualiza estado visual (fade do branco)
+        context.coordinator.targetActiveLevel = isActive ? 1.0 : 0.0
     }
     
-    // MARK: - Metal Coordinator
     class Coordinator: NSObject, MTKViewDelegate {
         var parent: AuroraBackground
         var device: MTLDevice!
@@ -110,31 +125,25 @@ struct AuroraBackground: NSViewRepresentable {
         var pipelineState: MTLRenderPipelineState!
         var startTime: Date
         
-        // Controle de interpolação suave
-        var currentActiveState: Float = 0.0
-        var targetActiveState: Float = 0.0
+        // Controle da Animação One-Shot
+        var progress: Float = 0.0
+        var isAnimating: Bool = false
         
-        struct Uniforms {
-            var time: Float
-            var isActive: Float
-            var resolution: SIMD2<Float>
-        }
+        // Controle de Estado
+        var wasActiveLastFrame: Bool = false
+        var currentActiveLevel: Float = 0.0
+        var targetActiveLevel: Float = 0.0
         
         init(_ parent: AuroraBackground) {
             self.parent = parent
             self.startTime = Date()
             super.init()
             
-            // Configuração do dispositivo padrão do Mac
-            guard let device = MTLCreateSystemDefaultDevice() else {
-                print("Metal não suportado neste Mac")
-                return
-            }
+            guard let device = MTLCreateSystemDefaultDevice() else { return }
             self.device = device
             self.commandQueue = device.makeCommandQueue()
             
             do {
-                // Compilação do shader em tempo de execução
                 let library = try device.makeLibrary(source: auroraShaderSource, options: nil)
                 let vertexFn = library.makeFunction(name: "vertex_main")
                 let fragmentFn = library.makeFunction(name: "fragment_main")
@@ -143,11 +152,7 @@ struct AuroraBackground: NSViewRepresentable {
                 descriptor.vertexFunction = vertexFn
                 descriptor.fragmentFunction = fragmentFn
                 descriptor.colorAttachments[0].pixelFormat = .bgra8Unorm
-                
-                // Configuração de Blending para transparência correta no macOS
                 descriptor.colorAttachments[0].isBlendingEnabled = true
-                descriptor.colorAttachments[0].rgbBlendOperation = .add
-                descriptor.colorAttachments[0].alphaBlendOperation = .add
                 descriptor.colorAttachments[0].sourceRGBBlendFactor = .sourceAlpha
                 descriptor.colorAttachments[0].destinationRGBBlendFactor = .oneMinusSourceAlpha
                 descriptor.colorAttachments[0].sourceAlphaBlendFactor = .sourceAlpha
@@ -155,8 +160,13 @@ struct AuroraBackground: NSViewRepresentable {
                 
                 self.pipelineState = try device.makeRenderPipelineState(descriptor: descriptor)
             } catch {
-                print("Erro ao compilar shader: \(error)")
+                print("Metal Error: \(error)")
             }
+        }
+        
+        func triggerOneShotAnimation() {
+            progress = 0.0
+            isAnimating = true
         }
         
         func mtkView(_ view: MTKView, drawableSizeWillChange size: CGSize) {}
@@ -166,24 +176,54 @@ struct AuroraBackground: NSViewRepresentable {
                   let rpd = view.currentRenderPassDescriptor,
                   let pipelineState = pipelineState else { return }
             
-            // Animação suave (Lerp) do valor 'isActive'
-            // Isso faz a transição de cinza para colorido ser fluida
-            let smoothing: Float = 0.1
-            currentActiveState += (targetActiveState - currentActiveState) * smoothing
+            // 1. Lógica de Velocidade (Rápido - Lento - Rápido)
+            if isAnimating {
+                let speed: Float
+                
+                if progress < 0.3 {
+                    speed = 0.04 // RÁPIDO (Entrada)
+                } else if progress < 0.7 {
+                    speed = 0.005 // LENTO (Exibição das cores)
+                } else {
+                    speed = 0.04 // RÁPIDO (Saída)
+                }
+                
+                progress += speed
+                
+                if progress >= 1.0 {
+                    progress = 1.0
+                    isAnimating = false // Fim da animação
+                }
+            } else {
+                // Se não está animando, garante que fique zerado ou em 1 dependendo da lógica desejada
+                // Aqui resetamos para 0 para próxima vez
+                if progress > 0.0 { progress = 0.0 }
+            }
             
+            // 2. Fade suave da borda branca base
+            currentActiveLevel += (targetActiveLevel - currentActiveLevel) * 0.1
+            
+            // Render
             let buffer = commandQueue.makeCommandBuffer()
             let encoder = buffer?.makeRenderCommandEncoder(descriptor: rpd)
             
             encoder?.setRenderPipelineState(pipelineState)
             
-            // Envio de dados para GPU
+            struct Uniforms {
+                var time: Float
+                var progress: Float
+                var isActive: Float
+                var resolution: SIMD2<Float>
+            }
+            
             var uniforms = Uniforms(
                 time: Float(Date().timeIntervalSince(startTime)),
-                isActive: currentActiveState,
+                progress: progress,
+                isActive: currentActiveLevel,
                 resolution: SIMD2<Float>(Float(view.drawableSize.width), Float(view.drawableSize.height))
             )
             
-            encoder?.setVertexBytes(&uniforms, length: MemoryLayout<Uniforms>.size, index: 1) // Dummy index
+            encoder?.setVertexBytes(&uniforms, length: MemoryLayout<Uniforms>.size, index: 1)
             encoder?.setFragmentBytes(&uniforms, length: MemoryLayout<Uniforms>.size, index: 0)
             
             encoder?.drawPrimitives(type: .triangleStrip, vertexStart: 0, vertexCount: 4)

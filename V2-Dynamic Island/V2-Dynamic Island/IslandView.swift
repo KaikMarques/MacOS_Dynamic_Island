@@ -1,6 +1,6 @@
 import SwiftUI
 
-// --- COMPONENTE AUXILIAR (Movido para o topo para garantir visibilidade) ---
+// --- COMPONENTE AUXILIAR ---
 struct MonitorRow: View {
     let label: String
     let value: String
@@ -19,7 +19,7 @@ struct MonitorRow: View {
     }
 }
 
-// Versão 5.7 - Topo Invisível (Sem borda no Notch Físico)
+// Versão 5.7 - Topo Invisível
 struct MacBookNotchShape: Shape {
     var isExpanded: Bool
     
@@ -77,7 +77,7 @@ struct IslandView: View {
     var body: some View {
         VStack(spacing: 0) {
             ZStack {
-                // 1. FUNDO DINÂMICO (Background Preto)
+                // 1. FUNDO DINÂMICO
                 ZStack {
                     MacBookNotchShape(isExpanded: isExpanded)
                         .fill(
@@ -101,31 +101,27 @@ struct IslandView: View {
                 }
                 .shadow(color: .black.opacity(isExpanded ? 0.7 : 0.3), radius: isExpanded ? 40 : 10, y: 15)
                 
-                // 2. BORDA METALIZADA (A Mágica acontece aqui)
-                // Usamos o AuroraBackground como um overlay, mas cortado no formato da borda
+                // 2. BORDA METALIZADA COM EFEITO RÁPIDO-LENTO-RÁPIDO
                 AuroraBackground(isActive: isHovered || isExpanded || showSettings)
-                    // Aplica máscara de opacidade PRIMEIRO para esconder o topo (Notch físico)
                     .mask(
                         LinearGradient(
                             stops: [
-                                .init(color: .clear, location: 0.0), // Topo invisível
+                                .init(color: .clear, location: 0.0),
                                 .init(color: .clear, location: 0.2),
-                                .init(color: .white, location: 0.5), // Começa a aparecer
+                                .init(color: .white, location: 0.5),
                                 .init(color: .white, location: 1.0)
                             ],
                             startPoint: .top,
                             endPoint: .bottom
                         )
                     )
-                    // DEPOIS corta no formato da linha fina (Stroke)
                     .mask(
                         MacBookNotchShape(isExpanded: isExpanded || showSettings)
-                            .stroke(lineWidth: 1.2) // Espessura da borda
+                            .stroke(lineWidth: 1.2)
                     )
-                    // Blend mode para garantir que o brilho interaja bem
                     .blendMode(.screen)
                 
-                // 3. CONTEÚDO DA ILHA
+                // 3. CONTEÚDO
                 VStack(spacing: 0) {
                     HStack(alignment: .center) {
                         AppleLogoComponent(
@@ -143,7 +139,6 @@ struct IslandView: View {
                         Spacer()
                         
                         HStack(spacing: 12) {
-                            // Barras de áudio
                             HStack(spacing: 2.8) {
                                 ForEach(0..<3) { i in
                                     RoundedRectangle(cornerRadius: 1.5)
@@ -159,7 +154,6 @@ struct IslandView: View {
                             }
                             .opacity((isExpanded || showSettings) ? 0 : 1)
                             
-                            // Sensores
                             HStack(spacing: 7) {
                                 Circle()
                                     .fill(Color.green)
@@ -194,9 +188,8 @@ struct IslandView: View {
                                 Divider().background(Color.white.opacity(0.04))
                                 
                                 HStack(spacing: 30) {
-                                    // MonitorRow agora deve ser encontrado sem problemas
-                                    MonitorRow(label: "ECRÃ", value: "2560×1664", color: Color.blue)
-                                    MonitorRow(label: "STATUS", value: "OTIMIZADO", color: Color.green)
+                                    MonitorRow(label: "ECRÃ", value: "2560×1664", color: .blue)
+                                    MonitorRow(label: "STATUS", value: "OTIMIZADO", color: .green)
                                 }
                             }
                             .blur(radius: showSettings ? 10 : 0)
