@@ -1,5 +1,24 @@
 import SwiftUI
 
+// --- COMPONENTE AUXILIAR (Movido para o topo para garantir visibilidade) ---
+struct MonitorRow: View {
+    let label: String
+    let value: String
+    let color: Color
+    
+    var body: some View {
+        VStack(alignment: .leading, spacing: 5) {
+            Text(label)
+                .font(.system(size: 8, weight: .bold))
+                .foregroundStyle(.secondary)
+            Text(value)
+                .font(.system(size: 14, design: .monospaced))
+                .foregroundStyle(color)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+}
+
 // Versão 5.7 - Topo Invisível (Sem borda no Notch Físico)
 struct MacBookNotchShape: Shape {
     var isExpanded: Bool
@@ -51,8 +70,6 @@ struct IslandView: View {
     @State private var isHovered = false
     @State private var showContent = false
     @State private var sensorPulse = false
-    
-    // Novo estado para o menu de definições
     @State private var showSettings = false
     
     private let springResponse = Animation.spring(response: 0.52, dampingFraction: 0.75)
@@ -60,17 +77,14 @@ struct IslandView: View {
     var body: some View {
         VStack(spacing: 0) {
             ZStack {
-                // FUNDO DINÂMICO
+                // 1. FUNDO DINÂMICO (Background Preto)
                 ZStack {
-                    // Modo Normal: Gradiente Preto Ajustado
                     MacBookNotchShape(isExpanded: isExpanded)
                         .fill(
                             LinearGradient(
                                 stops: [
                                     .init(color: .black, location: 0),
-                                    // Mantém preto puro até 85% da altura para garantir solidez
                                     .init(color: .black, location: isExpanded ? 0.85 : 1.0),
-                                    // O gradiente sutil aparece apenas na borda inferior para dar profundidade
                                     .init(color: Color(white: 0.08), location: 1.0)
                                 ],
                                 startPoint: .top,
@@ -79,7 +93,6 @@ struct IslandView: View {
                         )
                         .opacity(showSettings ? 0 : 1)
                     
-                    // Modo Definições: Efeito de Vidro (Ultra Thin Material)
                     if showSettings {
                         MacBookNotchShape(isExpanded: true)
                             .fill(.ultraThinMaterial)
@@ -88,30 +101,33 @@ struct IslandView: View {
                 }
                 .shadow(color: .black.opacity(isExpanded ? 0.7 : 0.3), radius: isExpanded ? 40 : 10, y: 15)
                 
-                // BORDA: Highlight sutil (AJUSTADO: Topo Transparente)
-                MacBookNotchShape(isExpanded: isExpanded || showSettings)
-                    .stroke(
+                // 2. BORDA METALIZADA (A Mágica acontece aqui)
+                // Usamos o AuroraBackground como um overlay, mas cortado no formato da borda
+                AuroraBackground(isActive: isHovered || isExpanded || showSettings)
+                    // Aplica máscara de opacidade PRIMEIRO para esconder o topo (Notch físico)
+                    .mask(
                         LinearGradient(
                             stops: [
-                                // MUDANÇA: Começa transparente para não marcar o notch físico
-                                .init(color: .clear, location: 0.0),
-                                .init(color: .clear, location: 0.2), // Garante invisibilidade na área superior
-                                
-                                // O brilho começa suavemente do meio para baixo
-                                .init(color: .white.opacity(0.12), location: 0.4),
-                                .init(color: .white.opacity(0.05), location: 0.7),
-                                .init(color: .white.opacity(0.15), location: 1.0)
+                                .init(color: .clear, location: 0.0), // Topo invisível
+                                .init(color: .clear, location: 0.2),
+                                .init(color: .white, location: 0.5), // Começa a aparecer
+                                .init(color: .white, location: 1.0)
                             ],
                             startPoint: .top,
                             endPoint: .bottom
-                        ),
-                        lineWidth: 0.8
+                        )
                     )
+                    // DEPOIS corta no formato da linha fina (Stroke)
+                    .mask(
+                        MacBookNotchShape(isExpanded: isExpanded || showSettings)
+                            .stroke(lineWidth: 1.2) // Espessura da borda
+                    )
+                    // Blend mode para garantir que o brilho interaja bem
+                    .blendMode(.screen)
                 
+                // 3. CONTEÚDO DA ILHA
                 VStack(spacing: 0) {
                     HStack(alignment: .center) {
-                        // LOGO com gatilho de definições
-                        // Atualizado para passar o estado isSettingsOpen
                         AppleLogoComponent(
                             isExpanded: isExpanded || showSettings,
                             isSettingsOpen: showSettings
@@ -127,7 +143,7 @@ struct IslandView: View {
                         Spacer()
                         
                         HStack(spacing: 12) {
-                            // Atividade Sonora
+                            // Barras de áudio
                             HStack(spacing: 2.8) {
                                 ForEach(0..<3) { i in
                                     RoundedRectangle(cornerRadius: 1.5)
@@ -143,7 +159,7 @@ struct IslandView: View {
                             }
                             .opacity((isExpanded || showSettings) ? 0 : 1)
                             
-                            // SENSORES
+                            // Sensores
                             HStack(spacing: 7) {
                                 Circle()
                                     .fill(Color.green)
@@ -163,7 +179,6 @@ struct IslandView: View {
                     
                     if showContent || showSettings {
                         ZStack {
-                            // CONTEÚDO ORIGINAL (COM BLUR SE SETTINGS ATIVO)
                             VStack(alignment: .leading, spacing: 16) {
                                 HStack {
                                     Text("SISTEMA OPERACIONAL")
@@ -179,13 +194,13 @@ struct IslandView: View {
                                 Divider().background(Color.white.opacity(0.04))
                                 
                                 HStack(spacing: 30) {
-                                    MonitorRow(label: "ECRÃ", value: "2560×1664", color: .blue)
-                                    MonitorRow(label: "STATUS", value: "OTIMIZADO", color: .green)
+                                    // MonitorRow agora deve ser encontrado sem problemas
+                                    MonitorRow(label: "ECRÃ", value: "2560×1664", color: Color.blue)
+                                    MonitorRow(label: "STATUS", value: "OTIMIZADO", color: Color.green)
                                 }
                             }
-                            .blur(radius: showSettings ? 10 : 0) // Efeito de Blur pedido
+                            .blur(radius: showSettings ? 10 : 0)
                             
-                            // MENU DE DEFINIÇÕES (SOBREPOSTO)
                             if showSettings {
                                 VStack(spacing: 12) {
                                     Text("CONFIGURAÇÕES")
@@ -221,7 +236,6 @@ struct IslandView: View {
             .frame(width: (isExpanded || showSettings) ? 440 : (isHovered ? 315 : 285),
                    height: (isExpanded || showSettings) ? 200 : 37)
             .onHover { hovering in
-                // Só fecha no hover se o menu de definições não estiver aberto
                 if !showSettings {
                     withAnimation(springResponse) {
                         isHovered = hovering
@@ -233,7 +247,6 @@ struct IslandView: View {
                 }
             }
             .onTapGesture {
-                // Toque principal fecha o menu se estiver aberto, ou expande a ilha
                 withAnimation(springResponse) {
                     if showSettings {
                         showSettings = false
@@ -258,25 +271,12 @@ struct IslandView: View {
                     }
                 } else {
                     showContent = false
-                    showSettings = false // Fecha definições se recolher
+                    showSettings = false
                 }
             }
             Spacer()
         }
         .frame(maxWidth: .infinity)
         .ignoresSafeArea()
-    }
-}
-
-struct MonitorRow: View {
-    let label: String
-    let value: String
-    let color: Color
-    var body: some View {
-        VStack(alignment: .leading, spacing: 5) {
-            Text(label).font(.system(size: 8, weight: .bold)).foregroundStyle(.secondary)
-            Text(value).font(.system(size: 14, design: .monospaced)).foregroundStyle(color)
-        }
-        .frame(maxWidth: .infinity, alignment: .leading)
     }
 }
