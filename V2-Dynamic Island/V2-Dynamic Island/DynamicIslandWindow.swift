@@ -13,14 +13,13 @@ class DynamicIslandWindow: NSWindow {
         self.isOpaque = false
         self.backgroundColor = .clear
         
-        // MUDANÇA CRÍTICA: .screenSaver é o nível mais alto possível.
-        // Isso permite que a Island sobreponha a barra de menus e o notch físico.
+        // Mantém nível ScreenSaver para ficar acima de tudo
         self.level = .screenSaver
         
         self.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary, .ignoresCycle]
         self.hasShadow = false
         
-        // Permite que cliques passem para o sistema se não houver conteúdo
+        // Permite cliques passarem se não houver conteúdo
         self.contentView = NSHostingView(rootView: view)
     }
     

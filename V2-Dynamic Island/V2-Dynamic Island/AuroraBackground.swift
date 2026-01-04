@@ -49,51 +49,33 @@ fragment float4 fragment_main(VertexOut in [[stage_in]],
     }
     
     // --- EFEITO DE LINHAS COLORIDAS (BURST) ---
+    float3 c1 = float3(0.0, 1.0, 1.0); // Ciano
+    float3 c2 = float3(1.0, 0.0, 1.0); // Magenta
+    float3 c3 = float3(0.0, 0.5, 1.0); // Azul
     
-    // Cores Neon
-    float3 c1 = float3(0.0, 1.0, 1.0); // Ciano Puro
-    float3 c2 = float3(1.0, 0.0, 1.0); // Magenta Puro
-    float3 c3 = float3(0.0, 0.5, 1.0); // Azul Elétrico
-    
-    // Posição do feixe de luz baseada no progresso
-    // Mapeia 0..1 para varrer a tela da esquerda para direita (com margem)
     float scanPos = (p * 3.0) - 1.0; 
     
-    // Cria padrões de ondas/linhas
     float wave1 = sin(uv.x * 10.0 + uniforms.time * 5.0) * 0.5 + 0.5;
     float wave2 = cos(uv.y * 8.0 - uniforms.time * 3.0) * 0.5 + 0.5;
     
-    // Mistura cores
     float3 burstColor = mix(c1, c2, wave1);
     burstColor = mix(burstColor, c3, wave2);
     
-    // MÁSCARA DO FEIXE (Shape do brilho que passa)
-    // Calcula a distância do pixel para o centro do feixe
     float dist = abs((uv.x + uv.y * 0.2) - scanPos);
-    
-    // Glow intenso e estreito
     float glow = exp(-dist * 4.0);
-    
-    // Corta o glow nas bordas da animação para não aparecer do nada
     float fadeEdge = smoothstep(0.0, 0.1, p) * smoothstep(1.0, 0.9, p);
     
-    // --- COMBINAÇÃO ---
-    // Começa com a cor base
     float3 finalColor = mix(restingColor, float3(0.5), active);
-    
-    // Adiciona o estouro de cor por cima (Additivity)
-    finalColor += burstColor * glow * fadeEdge * 2.5; // * 2.5 para brilho forte
+    finalColor += burstColor * glow * fadeEdge * 2.5;
 
     return float4(finalColor, 1.0);
 }
 """
 
 struct AuroraBackground: NSViewRepresentable {
-    var isActive: Bool // Gatilho (Hover ou Expandido)
+    var isActive: Bool
     
-    func makeCoordinator() -> Coordinator {
-        Coordinator(self)
-    }
+    func makeCoordinator() -> Coordinator { Coordinator(self) }
     
     func makeNSView(context: Context) -> MTKView {
         let mtkView = MTKView()
@@ -108,13 +90,10 @@ struct AuroraBackground: NSViewRepresentable {
     }
     
     func updateNSView(_ nsView: MTKView, context: Context) {
-        // Se o estado mudou para ATIVO, dispara a animação
         if isActive && !context.coordinator.wasActiveLastFrame {
             context.coordinator.triggerOneShotAnimation()
         }
         context.coordinator.wasActiveLastFrame = isActive
-        
-        // Atualiza estado visual (fade do branco)
         context.coordinator.targetActiveLevel = isActive ? 1.0 : 0.0
     }
     
@@ -125,11 +104,8 @@ struct AuroraBackground: NSViewRepresentable {
         var pipelineState: MTLRenderPipelineState!
         var startTime: Date
         
-        // Controle da Animação One-Shot
         var progress: Float = 0.0
         var isAnimating: Bool = false
-        
-        // Controle de Estado
         var wasActiveLastFrame: Bool = false
         var currentActiveLevel: Float = 0.0
         var targetActiveLevel: Float = 0.0
@@ -138,7 +114,6 @@ struct AuroraBackground: NSViewRepresentable {
             self.parent = parent
             self.startTime = Date()
             super.init()
-            
             guard let device = MTLCreateSystemDefaultDevice() else { return }
             self.device = device
             self.commandQueue = device.makeCommandQueue()
@@ -159,9 +134,7 @@ struct AuroraBackground: NSViewRepresentable {
                 descriptor.colorAttachments[0].destinationAlphaBlendFactor = .oneMinusSourceAlpha
                 
                 self.pipelineState = try device.makeRenderPipelineState(descriptor: descriptor)
-            } catch {
-                print("Metal Error: \(error)")
-            }
+            } catch { print("Metal Error: \(error)") }
         }
         
         func triggerOneShotAnimation() {
@@ -176,59 +149,34 @@ struct AuroraBackground: NSViewRepresentable {
                   let rpd = view.currentRenderPassDescriptor,
                   let pipelineState = pipelineState else { return }
             
-            // 1. Lógica de Velocidade (Rápido - Lento - Rápido)
             if isAnimating {
                 let speed: Float
-                
-                if progress < 0.3 {
-                    speed = 0.04 // RÁPIDO (Entrada)
-                } else if progress < 0.7 {
-                    speed = 0.005 // LENTO (Exibição das cores)
-                } else {
-                    speed = 0.04 // RÁPIDO (Saída)
-                }
+                if progress < 0.3 { speed = 0.04 }
+                else if progress < 0.7 { speed = 0.005 }
+                else { speed = 0.04 }
                 
                 progress += speed
-                
-                if progress >= 1.0 {
-                    progress = 1.0
-                    isAnimating = false // Fim da animação
-                }
+                if progress >= 1.0 { progress = 1.0; isAnimating = false }
             } else {
-                // Se não está animando, garante que fique zerado ou em 1 dependendo da lógica desejada
-                // Aqui resetamos para 0 para próxima vez
                 if progress > 0.0 { progress = 0.0 }
             }
             
-            // 2. Fade suave da borda branca base
             currentActiveLevel += (targetActiveLevel - currentActiveLevel) * 0.1
             
-            // Render
             let buffer = commandQueue.makeCommandBuffer()
             let encoder = buffer?.makeRenderCommandEncoder(descriptor: rpd)
-            
             encoder?.setRenderPipelineState(pipelineState)
             
-            struct Uniforms {
-                var time: Float
-                var progress: Float
-                var isActive: Float
-                var resolution: SIMD2<Float>
-            }
-            
-            var uniforms = Uniforms(
-                time: Float(Date().timeIntervalSince(startTime)),
-                progress: progress,
-                isActive: currentActiveLevel,
-                resolution: SIMD2<Float>(Float(view.drawableSize.width), Float(view.drawableSize.height))
-            )
+            struct Uniforms { var time: Float; var progress: Float; var isActive: Float; var resolution: SIMD2<Float>; }
+            var uniforms = Uniforms(time: Float(Date().timeIntervalSince(startTime)),
+                                    progress: progress,
+                                    isActive: currentActiveLevel,
+                                    resolution: SIMD2<Float>(Float(view.drawableSize.width), Float(view.drawableSize.height)))
             
             encoder?.setVertexBytes(&uniforms, length: MemoryLayout<Uniforms>.size, index: 1)
             encoder?.setFragmentBytes(&uniforms, length: MemoryLayout<Uniforms>.size, index: 0)
-            
             encoder?.drawPrimitives(type: .triangleStrip, vertexStart: 0, vertexCount: 4)
             encoder?.endEncoding()
-            
             buffer?.present(drawable)
             buffer?.commit()
         }

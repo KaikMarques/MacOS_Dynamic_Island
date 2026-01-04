@@ -19,40 +19,7 @@ struct MonitorRow: View {
     }
 }
 
-// --- NOVO COMPONENTE DE BOTÃO DO MENU ---
-struct MenuButton: View {
-    let icon: String
-    let label: String
-    var color: Color = .white
-    
-    var body: some View {
-        VStack(spacing: 8) {
-            ZStack {
-                Circle()
-                    .fill(Color.white.opacity(0.1))
-                    .frame(width: 38, height: 38)
-                
-                Image(systemName: icon)
-                    .font(.system(size: 15, weight: .medium))
-                    .foregroundStyle(color)
-            }
-            
-            Text(label)
-                .font(.system(size: 10, weight: .medium))
-                .foregroundStyle(.white.opacity(0.9))
-        }
-        .frame(height: 70)
-        .frame(maxWidth: .infinity)
-        .background(Color.white.opacity(0.05))
-        .cornerRadius(16)
-        .overlay(
-            RoundedRectangle(cornerRadius: 16)
-                .stroke(Color.white.opacity(0.1), lineWidth: 0.5)
-        )
-    }
-}
-
-// Versão 5.7 - Topo Invisível
+// Versão 5.7 - Topo Invisível (Sem borda no Notch Físico)
 struct MacBookNotchShape: Shape {
     var isExpanded: Bool
     
@@ -112,6 +79,7 @@ struct IslandView: View {
             ZStack {
                 // 1. FUNDO DINÂMICO
                 ZStack {
+                    // Fundo Preto Padrão (Modo Colapsado)
                     MacBookNotchShape(isExpanded: isExpanded)
                         .fill(
                             LinearGradient(
@@ -127,14 +95,23 @@ struct IslandView: View {
                         .opacity(showSettings ? 0 : 1)
                     
                     if showSettings {
-                        MacBookNotchShape(isExpanded: true)
-                            .fill(.ultraThinMaterial)
-                            .transition(.opacity)
+                        // --- FUNDO MENU EXPANDIDO (ESTILO VIDRO FOSCO LIMPO) ---
+                        // Removemos o LiquidMetal do fundo para focar nos ícones
+                        ZStack {
+                            MacBookNotchShape(isExpanded: true)
+                                .fill(.ultraThinMaterial)
+                                .opacity(0.98)
+                            
+                            // Ruído sutil para textura
+                            MacBookNotchShape(isExpanded: true)
+                                .fill(Color.white.opacity(0.02))
+                        }
+                        .transition(.opacity)
                     }
                 }
                 .shadow(color: .black.opacity(isExpanded ? 0.7 : 0.3), radius: isExpanded ? 40 : 10, y: 15)
                 
-                // 2. BORDA METALIZADA COM EFEITO RÁPIDO-LENTO-RÁPIDO
+                // 2. BORDA METALIZADA
                 AuroraBackground(isActive: isHovered || isExpanded || showSettings)
                     .mask(
                         LinearGradient(
@@ -153,9 +130,6 @@ struct IslandView: View {
                             .stroke(lineWidth: 1.2)
                     )
                     .blendMode(.screen)
-                    // AJUSTE: Reduz drasticamente a opacidade quando ativo.
-                    // Em repouso (false) mantém 1.0 para a linha cinza visível.
-                    // Quando ativo (true), cai para 0.35 para que o brilho forte do Metal fique suave.
                     .opacity((isHovered || isExpanded || showSettings) ? 0.35 : 1.0)
                 
                 // 3. CONTEÚDO
@@ -231,32 +205,31 @@ struct IslandView: View {
                             }
                             .blur(radius: showSettings ? 10 : 0)
                             
-                            // --- MENU DE BOTÕES (GRID) ---
                             if showSettings {
-                                VStack(spacing: 14) {
+                                VStack(spacing: 12) {
                                     HStack {
-                                        Text("CONTROLES")
-                                            .font(.system(size: 9, weight: .bold))
-                                            .foregroundStyle(.white.opacity(0.5))
-                                            .tracking(1)
+                                        Text("CENTRAL DE CONTROLE")
+                                            .font(.system(size: 8, weight: .bold))
+                                            .foregroundStyle(.white.opacity(0.4))
+                                            .tracking(1.2)
                                         Spacer()
                                     }
                                     .padding(.leading, 4)
+                                    .padding(.bottom, 2)
                                     
                                     LazyVGrid(columns: [
                                         GridItem(.flexible(), spacing: 12),
                                         GridItem(.flexible(), spacing: 12),
                                         GridItem(.flexible(), spacing: 12)
                                     ], spacing: 12) {
-                                        // Linha 1
-                                        MenuButton(icon: "lock.fill", label: "Bloquear")
-                                        MenuButton(icon: "moon.zzz.fill", label: "Repouso", color: .indigo)
-                                        MenuButton(icon: "display", label: "Tela")
+                                        // USANDO O NOVO BOTÃO METALIZADO
+                                        MetalRippleButton(icon: "lock.fill", label: "Bloquear", iconColor: .white, iconBgColor: .orange)
+                                        MetalRippleButton(icon: "moon.zzz.fill", label: "Repouso", iconColor: .white, iconBgColor: .indigo)
+                                        MetalRippleButton(icon: "display", label: "Tela", iconColor: .white, iconBgColor: .blue)
                                         
-                                        // Linha 2
-                                        MenuButton(icon: "gearshape.fill", label: "Ajustes")
-                                        MenuButton(icon: "arrow.clockwise", label: "Reiniciar")
-                                        MenuButton(icon: "power", label: "Desligar", color: .red)
+                                        MetalRippleButton(icon: "gearshape.fill", label: "Ajustes", iconColor: .white, iconBgColor: .gray)
+                                        MetalRippleButton(icon: "arrow.clockwise", label: "Reiniciar", iconColor: .white, iconBgColor: .yellow)
+                                        MetalRippleButton(icon: "power", label: "Desligar", iconColor: .white, iconBgColor: .red)
                                     }
                                 }
                                 .padding(.top, 5)
@@ -275,7 +248,7 @@ struct IslandView: View {
                 .animation(springResponse, value: showSettings)
             }
             .frame(width: (isExpanded || showSettings) ? 440 : (isHovered ? 315 : 285),
-                   height: (isExpanded || showSettings) ? 230 : 37) // Aumentei levemente a altura para caber os botões
+                   height: (isExpanded || showSettings) ? 255 : 37)
             .onHover { hovering in
                 if !showSettings {
                     withAnimation(springResponse) {
@@ -312,7 +285,7 @@ struct IslandView: View {
                     }
                 } else {
                     showContent = false
-                    showSettings = false // Fecha definições se recolher
+                    showSettings = false
                 }
             }
             Spacer()

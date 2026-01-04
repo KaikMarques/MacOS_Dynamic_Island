@@ -17,8 +17,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     func applicationDidFinishLaunching(_ notification: Notification) {
         NSApp.setActivationPolicy(.accessory)
 
-        // Aumentamos a largura da janela de 400 para 600 para garantir que
-        // a expansão de 350px tenha margem de sobra para sombras e glow.
+        // Tamanho ajustado para caber o novo menu expandido
         let windowWidth: CGFloat = 600
         let windowHeight: CGFloat = 300
 
@@ -30,7 +29,6 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         if let screen = NSScreen.main {
             let screenFrame = screen.frame
             let xPos = (screenFrame.width - windowWidth) / 2
-            // Colado no topo absoluto do M2 13"
             let yPos = screenFrame.height - windowHeight
             
             window?.setFrameOrigin(NSPoint(x: xPos, y: yPos))
