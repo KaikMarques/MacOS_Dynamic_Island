@@ -2,7 +2,7 @@
 //  MetalRippleButton.swift
 //  V2-Dynamic Island
 //
-//  Componente de botão com efeito ripple metalizado
+//  Ver. 6.6 - Glass Base & 3D Icon Animation
 //
 
 import SwiftUI
@@ -18,43 +18,74 @@ struct MetalRippleButton: View {
     var body: some View {
         VStack(spacing: 6) {
             ZStack {
-                // Fundo do ícone
-                Circle()
-                    .fill(iconBgColor.gradient)
-                    .frame(width: 32, height: 32)
-                    .shadow(color: iconBgColor.opacity(0.3), radius: isHovered ? 6 : 3)
-                
+                // Ícone com SF Symbol
                 Image(systemName: icon)
                     .font(.system(size: 13, weight: .semibold))
                     .foregroundStyle(iconColor)
+                    .frame(width: 32, height: 32)
+                    .background(
+                        Circle()
+                            .fill(iconBgColor.gradient.opacity(0.8))
+                    )
+                    // --- ANIMAÇÃO 3D EXPANDING ---
+                    // 1. Aumenta o tamanho (Pop)
+                    .scaleEffect(isHovered ? 1.25 : 1.0)
+                    // 2. Sombra deslocada para baixo (Levitação)
+                    .shadow(
+                        color: iconBgColor.opacity(0.6),
+                        radius: isHovered ? 12 : 4,
+                        y: isHovered ? 8 : 2
+                    )
+                    // 3. Rotação 3D (Inclinação para profundidade)
+                    .rotation3DEffect(
+                        .degrees(isHovered ? 15 : 0),
+                        axis: (x: 1.0, y: 0.0, z: 0.0)
+                    )
             }
-            .scaleEffect(isHovered ? 1.1 : 1.0)
+            // Animação separada para o ícone não herdar a animação do botão container
+            .animation(.spring(response: 0.4, dampingFraction: 0.6), value: isHovered)
             
             Text(label)
                 .font(.system(size: 9, weight: .medium))
-                .foregroundStyle(.white.opacity(0.85))
+                .foregroundStyle(.white.opacity(isHovered ? 1.0 : 0.7)) // Texto acende levemente
         }
         .frame(height: 72)
         .frame(maxWidth: .infinity)
-        // FUNDO METAL RIPPLE
+        
+        // --- FUNDO DO BOTÃO ---
         .background(
-            RippleMetalView(isHovered: isHovered)
-                .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+            ZStack {
+                // 1. CAMADA DE VIDRO (Estado de Repouso)
+                // Substitui a linha por uma placa de vidro sutil
+                RoundedRectangle(cornerRadius: 16, style: .continuous)
+                    .fill(.ultraThinMaterial)
+                    .opacity(0.2) // Vidro bem sutil
+                
+                // 2. SHADER LIQUID LENS (Estado Hover)
+                // O efeito "Lupa Líquida" que criamos na Ver 6.5
+                RippleMetalView(isHovered: isHovered)
+                    .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+                    .opacity(isHovered ? 1.0 : 0.0) // Só aparece no hover
+            }
         )
-        // Borda de vidro estática
-        .overlay(
-            RoundedRectangle(cornerRadius: 16, style: .continuous)
-                .stroke(Color.white.opacity(0.1), lineWidth: 0.5)
-        )
-        .onHover { h in withAnimation { isHovered = h } }
+        // Nota: Removi o .overlay com stroke que criava a linha fixa.
+        
+        // Gestos
+        .onHover { h in
+            withAnimation(.spring(response: 0.4, dampingFraction: 0.7)) {
+                isHovered = h
+            }
+        }
     }
 }
 
+// Preview para testar visualmente
 #Preview {
-    HStack {
-        MetalRippleButton(icon: "lock.fill", label: "Bloquear", iconColor: .white, iconBgColor: .orange)
-        MetalRippleButton(icon: "moon.zzz.fill", label: "Repouso", iconColor: .white, iconBgColor: .indigo)
+    ZStack {
+        Color.black
+        HStack {
+            MetalRippleButton(icon: "star.fill", label: "Favorito", iconColor: .white, iconBgColor: .yellow)
+                .frame(width: 100)
+        }
     }
-    .padding()
-    .background(.black)
 }
