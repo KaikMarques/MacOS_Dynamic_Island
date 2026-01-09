@@ -2,84 +2,84 @@
 //  DashboardView.swift
 //  V2-Dynamic Island
 //
-//  Ver. 14.0 - Widget Dashboard (Weather & Calendar)
+//  Ver. 18.0 - Full Dashboard Integration (Widgets + Media + Sliders)
 //
 
 import SwiftUI
 
 struct DashboardView: View {
+    @State private var volumeLevel: CGFloat = 0.6
+    @State private var brightnessLevel: CGFloat = 0.8
+    
+    // Configurações para visibilidade condicional
+    @AppStorage("showWeather") private var showWeather: Bool = true
+    @AppStorage("showCalendar") private var showCalendar: Bool = true
+    
     var body: some View {
-        HStack(spacing: 12) {
-            // --- WIDGET 1: CLIMA ---
-            HStack(spacing: 12) {
-                // Ícone do Clima (Símbolo SF com gradiente)
-                ZStack {
-                    Circle()
-                        .fill(Color.blue.opacity(0.2))
-                        .frame(width: 36, height: 36)
-                    
-                    Image(systemName: "cloud.drizzle.fill")
-                        .symbolRenderingMode(.palette)
-                        .foregroundStyle(.white, .cyan)
-                        .font(.system(size: 18))
-                }
-                
-                VStack(alignment: .leading, spacing: 2) {
-                    Text("18°")
-                        .font(.system(size: 16, weight: .semibold, design: .rounded))
-                        .foregroundStyle(.white)
-                    
-                    Text("Chuva Moderada")
-                        .font(.system(size: 10, weight: .medium))
-                        .foregroundStyle(Color.appleLakeGrey)
-                }
-            }
-            .padding(.horizontal, 12)
-            .padding(.vertical, 8)
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .appleLakeCard() // Aplica o Design System
+        VStack(spacing: 12) {
             
-            // --- WIDGET 2: CALENDÁRIO (Timeline) ---
-            HStack(spacing: 12) {
-                // Linha do Tempo Visual
-                VStack(spacing: 0) {
-                    Circle()
-                        .fill(Color.appleLakeGreen)
-                        .frame(width: 6, height: 6)
-                    Rectangle()
-                        .fill(Color.white.opacity(0.2))
-                        .frame(width: 1.5, height: 24)
+            // 1. LINHA DE WIDGETS (Clima & Calendário)
+            if showWeather || showCalendar {
+                HStack(spacing: 12) {
+                    if showWeather {
+                        WeatherWidget()
+                    }
+                    if showCalendar {
+                        CalendarWidget()
+                    }
                 }
-                .padding(.top, 4)
-                
-                VStack(alignment: .leading, spacing: 3) {
-                    Text("UPCOMING")
-                        .font(.system(size: 8, weight: .bold))
-                        .tracking(1.0)
-                        .foregroundStyle(Color.appleLakeGrey)
-                    
-                    Text("Reunião de Design")
-                        .font(.system(size: 12, weight: .medium))
-                        .foregroundStyle(.white)
-                    
-                    Text("10:00 - 11:30 • Sala 2")
-                        .font(.system(size: 10))
-                        .foregroundStyle(.white.opacity(0.6))
-                }
+                .frame(height: 56) // Altura fixa para widgets
             }
-            .padding(.horizontal, 12)
-            .padding(.vertical, 8)
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .appleLakeCard()
+            
+            // 2. MEDIA PLAYER
+            MediaNowPlayingView()
+            
+            // 3. SLIDERS DE SISTEMA
+            HStack(spacing: 12) {
+                SystemSliderView(icon: "speaker.wave.3.fill", value: $volumeLevel)
+                SystemSliderView(icon: "sun.max.fill", value: $brightnessLevel, isBrightness: true)
+            }
         }
-        .padding(.horizontal, 4)
     }
 }
 
-#Preview {
-    ZStack {
-        Color.black
-        DashboardView()
-            .frame(width: 440)
+// --- SUBCOMPONENTES DE WIDGET (Extraídos para limpeza) ---
+
+struct WeatherWidget: View {
+    var body: some View {
+        HStack(spacing: 10) {
+            ZStack {
+                Circle().fill(Color.blue.opacity(0.2)).frame(width: 32, height: 32)
+                Image(systemName: "cloud.drizzle.fill")
+                    .symbolRenderingMode(.palette)
+                    .foregroundStyle(.white, .cyan)
+                    .font(.system(size: 16))
+            }
+            VStack(alignment: .leading, spacing: 0) {
+                Text("18°").font(.system(size: 14, weight: .bold)).foregroundStyle(.white)
+                Text("Chuva").font(.system(size: 10)).foregroundStyle(Color.appleLakeGrey)
+            }
+            Spacer()
+        }
+        .padding(10)
+        .appleLakeCard()
+    }
+}
+
+struct CalendarWidget: View {
+    var body: some View {
+        HStack(spacing: 10) {
+            Rectangle().fill(Color.appleLakeGreen).frame(width: 3)
+                .clipShape(Capsule())
+            
+            VStack(alignment: .leading, spacing: 2) {
+                Text("REUNIÃO").font(.system(size: 8, weight: .bold)).foregroundStyle(Color.appleLakeGrey)
+                Text("Design System").font(.system(size: 11, weight: .semibold)).foregroundStyle(.white)
+                Text("10:00 AM").font(.system(size: 9)).foregroundStyle(.white.opacity(0.6))
+            }
+            Spacer()
+        }
+        .padding(10)
+        .appleLakeCard()
     }
 }
