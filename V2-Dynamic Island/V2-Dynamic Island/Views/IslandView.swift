@@ -1,69 +1,11 @@
+//
+//  IslandView.swift
+//  V2-Dynamic Island
+//
+//  Ver. 6.0 - Integração Liquid Glass Transparente
+//
+
 import SwiftUI
-
-// --- COMPONENTE AUXILIAR ---
-struct MonitorRow: View {
-    let label: String
-    let value: String
-    let color: Color
-    
-    var body: some View {
-        VStack(alignment: .leading, spacing: 5) {
-            Text(label)
-                .font(.system(size: 8, weight: .bold))
-                .foregroundStyle(.secondary)
-            Text(value)
-                .font(.system(size: 14, design: .monospaced))
-                .foregroundStyle(color)
-        }
-        .frame(maxWidth: .infinity, alignment: .leading)
-    }
-}
-
-// Versão 5.7 - Topo Invisível (Sem borda no Notch Físico)
-struct MacBookNotchShape: Shape {
-    var isExpanded: Bool
-    
-    var animatableData: CGFloat {
-        get { isExpanded ? 1 : 0 }
-        set { }
-    }
-    
-    func path(in rect: CGRect) -> Path {
-        var path = Path()
-        let width = rect.width
-        let height = rect.height
-        
-        let transitionRadius: CGFloat = 10
-        let cornerRadius: CGFloat = isExpanded ? 32 : 14
-        
-        path.move(to: CGPoint(x: 0, y: 0))
-        path.addArc(center: CGPoint(x: 0, y: transitionRadius),
-                    radius: transitionRadius,
-                    startAngle: Angle(degrees: -90),
-                    endAngle: Angle(degrees: 0),
-                    clockwise: false)
-        path.addLine(to: CGPoint(x: transitionRadius, y: height - cornerRadius))
-        path.addArc(center: CGPoint(x: transitionRadius + cornerRadius, y: height - cornerRadius),
-                    radius: cornerRadius,
-                    startAngle: Angle(degrees: 180),
-                    endAngle: Angle(degrees: 90),
-                    clockwise: true)
-        path.addLine(to: CGPoint(x: width - transitionRadius - cornerRadius, y: height))
-        path.addArc(center: CGPoint(x: width - transitionRadius - cornerRadius, y: height - cornerRadius),
-                    radius: cornerRadius,
-                    startAngle: Angle(degrees: 90),
-                    endAngle: Angle(degrees: 0),
-                    clockwise: true)
-        path.addLine(to: CGPoint(x: width - transitionRadius, y: transitionRadius))
-        path.addArc(center: CGPoint(x: width, y: transitionRadius),
-                    radius: transitionRadius,
-                    startAngle: Angle(degrees: 180),
-                    endAngle: Angle(degrees: 270),
-                    clockwise: false)
-        path.closeSubpath()
-        return path
-    }
-}
 
 struct IslandView: View {
     @State private var isExpanded = false
@@ -72,14 +14,15 @@ struct IslandView: View {
     @State private var sensorPulse = false
     @State private var showSettings = false
     
+    // Mola calibrada (Original)
     private let springResponse = Animation.spring(response: 0.52, dampingFraction: 0.75)
 
     var body: some View {
         VStack(spacing: 0) {
             ZStack {
-                // 1. FUNDO DINÂMICO
+                // 1. FUNDO & CAMADAS DE MATERIAL
                 ZStack {
-                    // Fundo Preto Padrão (Modo Colapsado)
+                    // --- MODO FECHADO (Original Hardware Gradient) ---
                     MacBookNotchShape(isExpanded: isExpanded)
                         .fill(
                             LinearGradient(
@@ -94,25 +37,35 @@ struct IslandView: View {
                         )
                         .opacity(showSettings ? 0 : 1)
                     
+                    // --- MODO EXPANDIDO (LIQUID GLASS EFFECT) ---
                     if showSettings {
-                        // --- FUNDO MENU EXPANDIDO (ESTILO VIDRO FOSCO LIMPO) ---
-                        // Removemos o LiquidMetal do fundo para focar nos ícones
                         ZStack {
+                            // Camada A: Blur do Sistema (Vê o wallpaper borrado atrás)
                             MacBookNotchShape(isExpanded: true)
                                 .fill(.ultraThinMaterial)
-                                .opacity(0.98)
+                                .opacity(0.5) // Transparência agressiva para ver o fundo
                             
-                            // Ruído sutil para textura
+                            // Camada B: O Shader Líquido (Brilhos e Ondas)
+                            LiquidGlassBackground()
+                                .clipShape(MacBookNotchShape(isExpanded: true))
+                                .opacity(0.8) // Mistura o shader com o blur
+                            
+                            // Camada C: Ruído sutil para textura
                             MacBookNotchShape(isExpanded: true)
-                                .fill(Color.white.opacity(0.02))
+                                .fill(Color.white.opacity(0.03))
+                                .blendMode(.overlay)
                         }
                         .transition(.opacity)
                     }
                 }
-                .shadow(color: .black.opacity(isExpanded ? 0.7 : 0.3), radius: isExpanded ? 40 : 10, y: 15)
+                .shadow(
+                    color: .black.opacity(isExpanded ? 0.6 : 0.3),
+                    radius: isExpanded ? 40 : 10,
+                    y: 15
+                )
                 
-                // 2. BORDA METALIZADA
-                AuroraBackground(isActive: isHovered || isExpanded || showSettings)
+                // 2. EFEITO AURORA (Borda Neon Original)
+                AuroraBackground(isActive: isHovered || isExpanded)
                     .mask(
                         LinearGradient(
                             stops: [
@@ -130,65 +83,55 @@ struct IslandView: View {
                             .stroke(lineWidth: 1.2)
                     )
                     .blendMode(.screen)
-                    .opacity((isHovered || isExpanded || showSettings) ? 0.35 : 1.0)
                 
-                // 3. CONTEÚDO
+                // 3. CONTEÚDO (Mantido Original)
                 VStack(spacing: 0) {
+                    // Header
                     HStack(alignment: .center) {
                         AppleLogoComponent(
-                            isExpanded: isExpanded || showSettings,
+                            isExpanded: isHovered || isExpanded || showSettings,
                             isSettingsOpen: showSettings
                         ) {
                             withAnimation(springResponse) {
-                                if isExpanded {
-                                    showSettings.toggle()
-                                }
+                                if isExpanded { showSettings.toggle() }
                             }
                         }
-                        .scaleEffect((isExpanded || showSettings) ? 1.18 : (isHovered ? 1.05 : 1.0))
+                        .scaleEffect((isHovered || isExpanded || showSettings) ? 1.18 : (isHovered ? 1.05 : 1.0))
                         
                         Spacer()
                         
+                        // Indicadores
                         HStack(spacing: 12) {
-                            HStack(spacing: 2.8) {
-                                ForEach(0..<3) { i in
-                                    RoundedRectangle(cornerRadius: 1.5)
-                                        .fill(Color.blue.gradient)
-                                        .frame(width: 2.5, height: (isHovered || isExpanded) ? 10 : 0)
-                                        .animation(
-                                            (isHovered || isExpanded)
-                                            ? .easeInOut(duration: 0.6).repeatForever(autoreverses: true).delay(Double(i) * 0.12)
-                                            : .easeInOut(duration: 0.2),
-                                            value: isHovered || isExpanded
+                            if !isExpanded && !showSettings {
+                                HStack(spacing: 7) {
+                                    Circle()
+                                        .fill(Color.green)
+                                        .frame(width: 6, height: 6)
+                                        .overlay(
+                                            Circle()
+                                                .stroke(Color.green, lineWidth: 1.5)
+                                                .scaleEffect(sensorPulse ? 1.8 : 1.0)
+                                                .opacity(sensorPulse ? 0 : 0.5)
                                         )
+                                    Circle()
+                                        .fill(Color.orange)
+                                        .frame(width: 6, height: 6)
                                 }
-                            }
-                            .opacity((isExpanded || showSettings) ? 0 : 1)
-                            
-                            HStack(spacing: 7) {
-                                Circle()
-                                    .fill(Color.green)
-                                    .frame(width: 6, height: 6)
-                                    .overlay(
-                                        Circle()
-                                            .stroke(Color.green, lineWidth: 1.5)
-                                            .scaleEffect(sensorPulse ? 1.8 : 1.0)
-                                            .opacity(sensorPulse ? 0 : 0.5)
-                                    )
-                                Circle().fill(Color.orange).frame(width: 6, height: 6)
+                                .transition(.opacity)
                             }
                         }
                     }
                     .padding(.horizontal, 22)
-                    .frame(height: (isExpanded || showSettings) ? 42 : 37)
+                    .frame(height: (isHovered || isExpanded || showSettings) ? 42 : 37)
                     
+                    // Corpo Expandido
                     if showContent || showSettings {
                         ZStack {
                             VStack(alignment: .leading, spacing: 16) {
                                 HStack {
                                     Text("SISTEMA OPERACIONAL")
                                         .font(.system(size: 8, weight: .black))
-                                        .foregroundStyle(.white.opacity(0.35))
+                                        .foregroundStyle(.white.opacity(0.4))
                                         .tracking(2.5)
                                     Spacer()
                                     Image(systemName: "cpu.fill")
@@ -196,10 +139,11 @@ struct IslandView: View {
                                         .foregroundStyle(.white.opacity(0.15))
                                 }
                                 
-                                Divider().background(Color.white.opacity(0.04))
+                                Divider().background(Color.white.opacity(0.1))
                                 
                                 HStack(spacing: 30) {
                                     MonitorRow(label: "ECRÃ", value: "2560×1664", color: .blue)
+                                    MonitorRow(label: "CPU", value: "45%", color: .green)
                                     MonitorRow(label: "STATUS", value: "OTIMIZADO", color: .green)
                                 }
                             }
@@ -222,7 +166,6 @@ struct IslandView: View {
                                         GridItem(.flexible(), spacing: 12),
                                         GridItem(.flexible(), spacing: 12)
                                     ], spacing: 12) {
-                                        // USANDO O NOVO BOTÃO METALIZADO
                                         MetalRippleButton(icon: "lock.fill", label: "Bloquear", iconColor: .white, iconBgColor: .orange)
                                         MetalRippleButton(icon: "moon.zzz.fill", label: "Repouso", iconColor: .white, iconBgColor: .indigo)
                                         MetalRippleButton(icon: "display", label: "Tela", iconColor: .white, iconBgColor: .blue)
@@ -244,8 +187,6 @@ struct IslandView: View {
                         ))
                     }
                 }
-                .animation(springResponse, value: isExpanded)
-                .animation(springResponse, value: showSettings)
             }
             .frame(width: (isExpanded || showSettings) ? 440 : (isHovered ? 315 : 285),
                    height: (isExpanded || showSettings) ? 255 : 37)
@@ -274,7 +215,7 @@ struct IslandView: View {
                     sensorPulse = true
                 }
             }
-            .onChange(of: isExpanded) { oldValue, newValue in
+            .onChange(of: isExpanded) { _, newValue in
                 if newValue {
                     DispatchQueue.main.asyncAfter(deadline: .now() + 0.08) {
                         if isExpanded {

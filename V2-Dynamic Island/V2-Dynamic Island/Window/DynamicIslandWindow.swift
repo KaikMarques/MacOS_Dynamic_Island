@@ -1,3 +1,10 @@
+//
+//  DynamicIslandWindow.swift
+//  V2-Dynamic Island
+//
+//  Janela customizada sem bordas para a Dynamic Island
+//
+
 import AppKit
 import SwiftUI
 
