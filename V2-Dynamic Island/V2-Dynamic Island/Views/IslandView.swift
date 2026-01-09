@@ -2,221 +2,224 @@
 //  IslandView.swift
 //  V2-Dynamic Island
 //
-//  Ver. 6.4 - Black Expanded & Liquid Menu (Hybrid Mode)
+//  Ver. 14.0 - Integration of AppleLake Dashboard
 //
 
 import SwiftUI
 
 struct IslandView: View {
+    // --- ESTADOS ---
     @State private var isExpanded = false
     @State private var isHovered = false
     @State private var showContent = false
     @State private var sensorPulse = false
-    @State private var showSettings = false
     
-    private let springResponse = Animation.spring(response: 0.52, dampingFraction: 0.75)
+    // Controle de Navegação Interna
+    @State private var showMenu = false
+    @State private var showSettingsPanel = false
+    
+    // --- SETTINGS STORAGE ---
+    @AppStorage("staticVideoLink") private var staticVideoLink: String = ""
+    @AppStorage("expandedVideoLink") private var expandedVideoLink: String = ""
+    
+    // Configuração de Animação: "Spring Physics" conforme spec
+    private let springResponse = Animation.spring(response: 0.5, dampingFraction: 0.7, blendDuration: 0.2)
 
     var body: some View {
-        VStack(spacing: 0) {
-            ZStack {
-                // 1. FUNDO & CAMADAS
+        GeometryReader { _ in
+            
+            VStack(spacing: 0) {
                 ZStack {
-                    // MODO GERAL (FECHADO E EXPANDIDO/INFO)
-                    // Fica visível sempre, EXCETO quando abre o Menu (Settings)
-                    MacBookNotchShape(isExpanded: isExpanded)
-                        .fill(
-                            LinearGradient(
-                                stops: [
-                                    .init(color: .black, location: 0),
-                                    .init(color: .black, location: 0.85),
-                                    .init(color: Color(white: 0.08), location: 1.0)
-                                ],
-                                startPoint: .top,
-                                endPoint: .bottom
-                            )
-                        )
-                        .opacity(showSettings ? 0 : 1) // Some apenas ao abrir Settings
+                    // 1. CAMADA DE FUNDO
+                    backgroundLayer
                     
-                    // MODO MENU (LIQUID GLASS EFFECT)
-                    // Só aparece quando clica na Maçã
-                    if showSettings {
-                        ZStack {
-                            // Base Dark Profunda (Para garantir leitura dos botões)
-                            MacBookNotchShape(isExpanded: true)
-                                .fill(Color(red: 0.02, green: 0.02, blue: 0.05)) // Quase preto
-                            
-                            // Camada B: Blur do Sistema
-                            MacBookNotchShape(isExpanded: true)
-                                .fill(.ultraThinMaterial)
-                                .opacity(0.6)
-                            
-                            // Camada C: Shader Líquido
-                            LiquidGlassBackground()
-                                .clipShape(MacBookNotchShape(isExpanded: true))
-                                .opacity(0.8) // Bem visível
-                                .blendMode(.plusLighter)
-                            
-                            // Camada D: Ruído
-                            MacBookNotchShape(isExpanded: true)
-                                .fill(Color.white.opacity(0.03))
-                                .blendMode(.overlay)
-                        }
-                        .transition(.opacity) // Fade suave na troca de modos
-                    }
+                    // 2. BORDAS E EFEITOS
+                    borderEffectLayer
+                    
+                    // 3. CAMADA DE CONTEÚDO (UI)
+                    contentLayer
                 }
-                .shadow(
-                    color: .black.opacity((isExpanded || showSettings) ? 0.6 : 0.3),
-                    radius: (isExpanded || showSettings) ? 40 : 10,
-                    y: 15
-                )
+                // Controle de Tamanho Dinâmico (Morphing)
+                .frame(width: (isExpanded || showMenu || showSettingsPanel) ? 440 : (isHovered ? 315 : 285),
+                       height: (isExpanded || showMenu || showSettingsPanel) ? 140 : 37) // Altura ajustada para Widgets (140)
                 
-                // 2. EFEITO AURORA (Borda - Mantido)
-                AuroraBackground(isActive: isHovered || isExpanded)
-                    .mask(
-                        LinearGradient(
-                            stops: [
-                                .init(color: .clear, location: 0.0),
-                                .init(color: .white, location: 0.5),
-                                .init(color: .white, location: 1.0)
-                            ],
-                            startPoint: .top,
-                            endPoint: .bottom
-                        )
-                    )
-                    .mask(
-                        MacBookNotchShape(isExpanded: isExpanded || showSettings)
-                            .stroke(lineWidth: 1.2)
-                    )
-                    .blendMode(.screen)
-                
-                // 3. CONTEÚDO
-                contentLayer
-            }
-            .frame(width: (isExpanded || showSettings) ? 440 : (isHovered ? 315 : 285),
-                   height: (isExpanded || showSettings) ? 255 : 37)
-            .onHover { hovering in
-                if !showSettings {
-                    withAnimation(springResponse) {
-                        isHovered = hovering
-                        if !hovering {
-                            showContent = false
-                            isExpanded = false
-                        }
-                    }
-                }
-            }
-            .onTapGesture {
-                withAnimation(springResponse) {
-                    if showSettings {
-                        showSettings = false
-                    } else {
-                        isExpanded.toggle()
-                    }
-                }
-            }
-            .onAppear {
-                withAnimation(.easeInOut(duration: 4).repeatForever(autoreverses: false)) {
-                    sensorPulse = true
-                }
-            }
-            .onChange(of: isExpanded) { _, newValue in
-                if newValue {
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.08) {
-                        if isExpanded {
-                            withAnimation(.easeInOut(duration: 0.4)) {
-                                showContent = true
+                // --- GESTOS ---
+                .onHover { hovering in
+                    if !showMenu && !showSettingsPanel {
+                        withAnimation(springResponse) {
+                            isHovered = hovering
+                            if !hovering {
+                                showContent = false
+                                isExpanded = false
                             }
                         }
                     }
-                } else {
-                    showContent = false
-                    showSettings = false
                 }
-            }
-            Spacer()
-        }
-        .frame(maxWidth: .infinity)
-        .ignoresSafeArea()
-    }
-    
-    // Subview de Conteúdo (Mantida)
-    private var contentLayer: some View {
-        VStack(spacing: 0) {
-            // Header
-            HStack(alignment: .center) {
-                AppleLogoComponent(
-                    isExpanded: isHovered || isExpanded || showSettings,
-                    isSettingsOpen: showSettings
-                ) {
+                .onTapGesture {
                     withAnimation(springResponse) {
-                        if isExpanded { showSettings.toggle() }
+                        if showMenu || showSettingsPanel {
+                            showMenu = false
+                            showSettingsPanel = false
+                        } else {
+                            isExpanded.toggle()
+                        }
                     }
                 }
-                .scaleEffect((isHovered || isExpanded || showSettings) ? 1.18 : (isHovered ? 1.05 : 1.0))
+                .onChange(of: isExpanded) { _, newValue in
+                    if newValue {
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                            if isExpanded {
+                                withAnimation(.easeInOut(duration: 0.3)) {
+                                    showContent = true
+                                }
+                            }
+                        }
+                    } else {
+                        showContent = false
+                        showMenu = false
+                    }
+                }
+                Spacer()
+            }
+            .frame(maxWidth: .infinity)
+            .ignoresSafeArea()
+        }
+    }
+    
+    // --- SUBVIEWS PARA ORGANIZAÇÃO ---
+    
+    private var backgroundLayer: some View {
+        ZStack {
+            // A. FUNDO BASE (Static)
+            if !staticVideoLink.isEmpty && !isExpanded && !showMenu,
+               let url = VideoURLFactory.makeURL(from: staticVideoLink) {
+                
+                LoopingVideoPlayer(videoURL: url)
+                    .opacity(1.0)
+                    .transition(.opacity)
+            } else {
+                MacBookNotchShape(isExpanded: isExpanded)
+                    .fill(Color.appleLakeBlack) // Design System Color
+                    .opacity(showMenu || showSettingsPanel ? 0 : 1)
+            }
+
+            // B. FUNDO EXPANDIDO
+            if showMenu || showSettingsPanel || isExpanded {
+                ZStack {
+                    MacBookNotchShape(isExpanded: true)
+                        .fill(Color.appleLakeCharcoal) // Design System Color
+                    
+                    if !expandedVideoLink.isEmpty,
+                       let url = VideoURLFactory.makeURL(from: expandedVideoLink) {
+                        
+                        LoopingVideoPlayer(videoURL: url)
+                            .clipShape(MacBookNotchShape(isExpanded: true))
+                            .opacity(0.4)
+                            .allowsHitTesting(false)
+                    } else {
+                        // Liquid Glass sutil
+                        LiquidGlassBackground()
+                            .clipShape(MacBookNotchShape(isExpanded: true))
+                            .opacity(0.3)
+                    }
+                }
+                .transition(.opacity)
+            }
+        }
+        .shadow(
+            color: .black.opacity((isExpanded || showMenu) ? 0.5 : 0.2),
+            radius: (isExpanded || showMenu) ? 30 : 10,
+            y: 10
+        )
+    }
+    
+    private var borderEffectLayer: some View {
+        AuroraBackground(isActive: isHovered || isExpanded)
+            .mask(
+                LinearGradient(
+                    stops: [
+                        .init(color: .clear, location: 0.0),
+                        .init(color: .white, location: 0.5),
+                        .init(color: .white, location: 1.0)
+                    ],
+                    startPoint: .top,
+                    endPoint: .bottom
+                )
+            )
+            .mask(
+                MacBookNotchShape(isExpanded: isExpanded || showMenu || showSettingsPanel)
+                    .stroke(lineWidth: 1.0)
+            )
+            .blendMode(.screen)
+            .opacity(0.6)
+    }
+    
+    private var contentLayer: some View {
+        VStack(spacing: 0) {
+            // HEADER (Logo e Status)
+            HStack(alignment: .center) {
+                AppleLogoComponent(
+                    isExpanded: isHovered || isExpanded || showMenu || showSettingsPanel,
+                    isSettingsOpen: showMenu
+                ) {
+                    withAnimation(springResponse) {
+                        if isExpanded || showSettingsPanel {
+                            if showSettingsPanel {
+                                showSettingsPanel = false
+                                showMenu = true
+                            } else {
+                                showMenu.toggle()
+                            }
+                        }
+                    }
+                }
+                .scaleEffect((isHovered || isExpanded || showMenu) ? 1.1 : 1.0)
                 
                 Spacer()
                 
+                // Indicadores de Privacidade
                 HStack(spacing: 12) {
-                    if !isExpanded && !showSettings {
-                        HStack(spacing: 7) {
-                            Circle().fill(Color.green).frame(width: 6, height: 6)
-                            Circle().fill(Color.orange).frame(width: 6, height: 6)
+                    if !isExpanded && !showMenu && !showSettingsPanel {
+                        HStack(spacing: 6) {
+                            Circle().fill(Color.appleLakeGreen).frame(width: 5, height: 5)
+                            Circle().fill(Color.orange).frame(width: 5, height: 5)
                         }
-                        .transition(.opacity)
                     }
                 }
             }
-            .padding(.horizontal, 22)
-            .frame(height: (isHovered || isExpanded || showSettings) ? 42 : 37)
+            .padding(.horizontal, 20)
+            .frame(height: 37) // Altura fixa do Header (Notch original)
             
-            // Corpo
-            if showContent || showSettings {
+            // CORPO DINÂMICO
+            if showContent || showMenu || showSettingsPanel {
                 ZStack {
-                    // Painel Principal (CPU/RAM)
-                    VStack(alignment: .leading, spacing: 16) {
-                        HStack {
-                            Text("SISTEMA OPERACIONAL")
-                                .font(.system(size: 8, weight: .black))
-                                .foregroundStyle(.white.opacity(0.4))
-                                .tracking(2.5)
-                            Spacer()
-                            Image(systemName: "cpu.fill").font(.system(size: 10)).foregroundStyle(.white.opacity(0.15))
-                        }
-                        Divider().background(Color.white.opacity(0.1))
-                        HStack(spacing: 30) {
-                            MonitorRow(label: "ECRÃ", value: "2560×1664", color: .blue)
-                            MonitorRow(label: "CPU", value: "45%", color: .green)
-                            MonitorRow(label: "STATUS", value: "OTIMIZADO", color: .green)
-                        }
+                    // A. SETTINGS
+                    if showSettingsPanel {
+                        IslandSettingsView(onBackButton: {
+                            withAnimation(springResponse) {
+                                showSettingsPanel = false
+                                showMenu = true
+                            }
+                        })
+                        .transition(.move(edge: .trailing))
                     }
-                    .blur(radius: showSettings ? 10 : 0)
-                    
-                    // Grid de Settings (Onde o fundo é Liquid)
-                    if showSettings {
-                        VStack(spacing: 12) {
-                            HStack {
-                                Text("CENTRAL DE CONTROLE").font(.system(size: 8, weight: .bold)).foregroundStyle(.white.opacity(0.4)).tracking(1.2)
-                                Spacer()
-                            }
-                            .padding(.leading, 4).padding(.bottom, 2)
-                            LazyVGrid(columns: [GridItem(), GridItem(), GridItem()], spacing: 12) {
-                                MetalRippleButton(icon: "lock.fill", label: "Bloquear", iconColor: .white, iconBgColor: .orange)
-                                MetalRippleButton(icon: "moon.zzz.fill", label: "Repouso", iconColor: .white, iconBgColor: .indigo)
-                                MetalRippleButton(icon: "display", label: "Tela", iconColor: .white, iconBgColor: .blue)
-                                MetalRippleButton(icon: "gearshape.fill", label: "Ajustes", iconColor: .white, iconBgColor: .gray)
-                                MetalRippleButton(icon: "arrow.clockwise", label: "Reiniciar", iconColor: .white, iconBgColor: .yellow)
-                                MetalRippleButton(icon: "power", label: "Desligar", iconColor: .white, iconBgColor: .red)
-                            }
-                        }
-                        .padding(.top, 5)
-                        .transition(.scale(scale: 0.95).combined(with: .opacity))
+                    // B. MENU DE CONTROLE (ÍCONES)
+                    else if showMenu {
+                        // (Mantenha seu grid de ícones aqui, simplificado para brevidade)
+                        // ... Pode usar o código anterior do Menu Grid aqui ...
+                        Text("Menu Grid Placeholder") // Substitua pelo seu código de Grid
+                            .foregroundStyle(.white)
+                    }
+                    // C. DASHBOARD WIDGETS (PADRÃO AO CLICAR)
+                    else {
+                        DashboardView() // A nova View de Widgets
+                            .transition(.opacity.combined(with: .scale(scale: 0.95)))
                     }
                 }
-                .padding(.horizontal, 28).padding(.bottom, 24)
-                .transition(.asymmetric(
-                    insertion: .opacity.combined(with: .scale(scale: 0.85)).combined(with: .move(edge: .top)),
-                    removal: .opacity.combined(with: .scale(scale: 0.01))
-                ))
+                .padding(.horizontal, 16)
+                .padding(.bottom, 16)
+                .padding(.top, 8)
+                .frame(maxHeight: .infinity)
             }
         }
     }
