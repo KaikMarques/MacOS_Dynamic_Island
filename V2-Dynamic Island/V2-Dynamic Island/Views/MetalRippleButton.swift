@@ -2,7 +2,7 @@
 //  MetalRippleButton.swift
 //  V2-Dynamic Island
 //
-//  Ver. 6.6 - Glass Base & 3D Icon Animation
+//  Ver. 9.2 - Static Base & Floating Icon
 //
 
 import SwiftUI
@@ -14,78 +14,98 @@ struct MetalRippleButton: View {
     var iconBgColor: Color
     
     @State private var isHovered = false
+    @State private var mouseLoc: CGPoint = CGPoint(x: 0.5, y: 0.5)
     
     var body: some View {
-        VStack(spacing: 6) {
-            ZStack {
-                // Ícone com SF Symbol
-                Image(systemName: icon)
-                    .font(.system(size: 13, weight: .semibold))
-                    .foregroundStyle(iconColor)
-                    .frame(width: 32, height: 32)
-                    .background(
-                        Circle()
-                            .fill(iconBgColor.gradient.opacity(0.8))
-                    )
-                    // --- ANIMAÇÃO 3D EXPANDING ---
-                    // 1. Aumenta o tamanho (Pop)
-                    .scaleEffect(isHovered ? 1.25 : 1.0)
-                    // 2. Sombra deslocada para baixo (Levitação)
-                    .shadow(
-                        color: iconBgColor.opacity(0.6),
-                        radius: isHovered ? 12 : 4,
-                        y: isHovered ? 8 : 2
-                    )
-                    // 3. Rotação 3D (Inclinação para profundidade)
-                    .rotation3DEffect(
-                        .degrees(isHovered ? 15 : 0),
-                        axis: (x: 1.0, y: 0.0, z: 0.0)
-                    )
-            }
-            // Animação separada para o ícone não herdar a animação do botão container
-            .animation(.spring(response: 0.4, dampingFraction: 0.6), value: isHovered)
+        GeometryReader { geo in
+            let size = geo.size
             
-            Text(label)
-                .font(.system(size: 9, weight: .medium))
-                .foregroundStyle(.white.opacity(isHovered ? 1.0 : 0.7)) // Texto acende levemente
+            // Paralaxe do ícone
+            let parallaxX = isHovered ? (mouseLoc.x - 0.5) * 6 : 0
+            let parallaxY = isHovered ? (mouseLoc.y - 0.5) * 6 : 0
+            
+            VStack(spacing: 6) {
+                ZStack {
+                    // CAMADA 1: BASE (Estática)
+                    Circle()
+                        .fill(iconBgColor.gradient.opacity(0.8))
+                        .frame(width: 32, height: 32)
+                        .overlay(
+                            Circle()
+                                .stroke(
+                                    LinearGradient(
+                                        stops: [
+                                            .init(color: .white.opacity(0.4), location: 0.1),
+                                            .init(color: .clear, location: 0.5),
+                                            .init(color: .white.opacity(0.1), location: 0.9)
+                                        ],
+                                        startPoint: .topLeading,
+                                        endPoint: .bottomTrailing
+                                    ),
+                                    lineWidth: 1
+                                )
+                        )
+                        .scaleEffect(isHovered ? 1.1 : 1.0)
+                        .shadow(
+                            color: iconBgColor.opacity(0.4),
+                            radius: isHovered ? 12 : 0,
+                            y: isHovered ? 6 : 0
+                        )
+                    
+                    // CAMADA 2: ÍCONE (Dinâmico)
+                    Image(systemName: icon)
+                        .font(.system(size: 13, weight: .semibold))
+                        .foregroundStyle(iconColor)
+                        .offset(x: parallaxX, y: parallaxY)
+                        .scaleEffect(isHovered ? 1.25 : 1.0)
+                        .shadow(
+                            color: .black.opacity(0.4),
+                            radius: isHovered ? 4 : 0,
+                            x: parallaxX * 0.5,
+                            y: isHovered ? 6 : 0
+                        )
+                }
+                .animation(.interpolatingSpring(mass: 0.5, stiffness: 170, damping: 15), value: mouseLoc)
+                .animation(.easeInOut(duration: 0.25), value: isHovered)
+                
+                Text(label)
+                    .font(.system(size: 9, weight: .medium))
+                    .foregroundStyle(.white.opacity(isHovered ? 1.0 : 0.7))
+            }
+            .frame(width: size.width, height: size.height)
+            .contentShape(Rectangle())
+            
+            // CAMADA 3: EFEITO SHADER
+            .background(
+                ZStack {
+                    RoundedRectangle(cornerRadius: 16, style: .continuous)
+                        .fill(.ultraThinMaterial)
+                        .opacity(0.2)
+                    
+                    RippleMetalView(isHovered: isHovered, mouseLocation: mouseLoc)
+                        .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+                        .opacity(isHovered ? 1.0 : 0.0)
+                }
+            )
+            .onContinuousHover { phase in
+                switch phase {
+                case .active(let location):
+                    isHovered = true
+                    let normalizedX = location.x / size.width
+                    let normalizedY = location.y / size.height
+                    self.mouseLoc = CGPoint(
+                        x: min(max(normalizedX, 0), 1),
+                        y: min(max(normalizedY, 0), 1)
+                    )
+                case .ended:
+                    isHovered = false
+                    withAnimation(.easeOut(duration: 0.4)) {
+                        self.mouseLoc = CGPoint(x: 0.5, y: 0.5)
+                    }
+                }
+            }
         }
         .frame(height: 72)
         .frame(maxWidth: .infinity)
-        
-        // --- FUNDO DO BOTÃO ---
-        .background(
-            ZStack {
-                // 1. CAMADA DE VIDRO (Estado de Repouso)
-                // Substitui a linha por uma placa de vidro sutil
-                RoundedRectangle(cornerRadius: 16, style: .continuous)
-                    .fill(.ultraThinMaterial)
-                    .opacity(0.2) // Vidro bem sutil
-                
-                // 2. SHADER LIQUID LENS (Estado Hover)
-                // O efeito "Lupa Líquida" que criamos na Ver 6.5
-                RippleMetalView(isHovered: isHovered)
-                    .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
-                    .opacity(isHovered ? 1.0 : 0.0) // Só aparece no hover
-            }
-        )
-        // Nota: Removi o .overlay com stroke que criava a linha fixa.
-        
-        // Gestos
-        .onHover { h in
-            withAnimation(.spring(response: 0.4, dampingFraction: 0.7)) {
-                isHovered = h
-            }
-        }
-    }
-}
-
-// Preview para testar visualmente
-#Preview {
-    ZStack {
-        Color.black
-        HStack {
-            MetalRippleButton(icon: "star.fill", label: "Favorito", iconColor: .white, iconBgColor: .yellow)
-                .frame(width: 100)
-        }
     }
 }
