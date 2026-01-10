@@ -2,239 +2,227 @@
 //  IslandSettingsView.swift
 //  V2-Dynamic Island
 //
-//  Ver. 17.0 - Added File Drop Toggle & Tools Section
+//  Ver. 21.3 - Neomorphic Depth (Right Side) & Liquid Glass
 //
 
 import SwiftUI
 
+// Enum para o Tema
+enum IslandTheme: String, CaseIterable, Identifiable {
+    case classic = "Clássico (Preto)"
+    case liquid = "Liquid Glass (Vidro)"
+    var id: String { self.rawValue }
+}
+
 struct IslandSettingsView: View {
-    // --- PERSISTÊNCIA DE DADOS ---
-    
-    // Configurações de Personalização
+    // --- PERSISTÊNCIA ---
+    @AppStorage("islandTheme") private var selectedTheme: IslandTheme = .classic
     @AppStorage("showWeather") private var showWeather: Bool = true
     @AppStorage("showCalendar") private var showCalendar: Bool = true
-    
-    // Configurações de Ferramentas (NOVO)
     @AppStorage("enableFileDrop") private var enableFileDrop: Bool = true
-    
-    // Configurações de Vídeo
     @AppStorage("staticVideoLink") private var staticVideoLink: String = ""
     @AppStorage("expandedVideoLink") private var expandedVideoLink: String = ""
     
-    // Callback para fechar o painel
     var onClose: () -> Void
+    
+    // Gradiente da Borda dos Grupos (Mais suave)
+    private let glassBorder = LinearGradient(
+        stops: [
+            .init(color: .white.opacity(0.4), location: 0.0),
+            .init(color: .white.opacity(0.1), location: 0.5),
+            .init(color: .clear, location: 1.0)
+        ],
+        startPoint: .topLeading,
+        endPoint: .bottomTrailing
+    )
     
     var body: some View {
         VStack(spacing: 0) {
-            // --- HEADER DE NAVEGAÇÃO ---
+            // HEADER
             HStack {
                 Button(action: onClose) {
-                    HStack(spacing: 4) {
-                        Image(systemName: "chevron.left")
-                            .font(.system(size: 12, weight: .bold))
-                        Text("Voltar")
-                            .font(.system(size: 13, weight: .medium))
+                    HStack(spacing: 3) {
+                        Image(systemName: "chevron.left").font(.system(size: 10, weight: .bold))
+                        Text("Voltar").font(.system(size: 11, weight: .medium))
                     }
-                    .foregroundStyle(Color.appleLakeGrey)
+                    .foregroundStyle(.secondary)
                 }
                 .buttonStyle(.plain)
                 
                 Spacer()
                 
-                Text("Ajustes da Ilha")
-                    .font(.system(size: 13, weight: .semibold))
-                    .foregroundStyle(.white)
-                    .offset(x: -20) // Ajuste visual para centralizar
+                Text("Ajustes")
+                    .font(.system(size: 11, weight: .semibold))
+                    .foregroundStyle(.primary)
+                    .offset(x: -15)
                 
                 Spacer()
             }
-            .padding(.horizontal, 16)
-            .padding(.vertical, 14)
-            .background(Color.appleLakeCharcoal.opacity(0.8))
+            .padding(.horizontal, 12)
+            .padding(.vertical, 10)
+            // Fundo do Header sutil
+            .background(.white.opacity(0.05))
             
-            Divider().background(Color.white.opacity(0.1))
+            Divider().background(.white.opacity(0.1))
             
-            // --- CONTEÚDO (SCROLL) ---
+            // CONTEÚDO
             ScrollView {
-                VStack(spacing: 24) {
+                VStack(spacing: 16) {
                     
-                    // SEÇÃO 1: PERSONALIZAÇÃO
-                    SettingsGroup(title: "PERSONALIZAÇÃO") {
-                        ToggleRow(icon: "cloud.sun.fill", color: .blue, title: "Mostrar Clima", isOn: $showWeather)
-                        
-                        Divider()
-                            .background(Color.white.opacity(0.05))
-                            .padding(.leading, 36)
-                        
-                        ToggleRow(icon: "calendar", color: .red, title: "Mostrar Calendário", isOn: $showCalendar)
-                        
-                        Divider()
-                            .background(Color.white.opacity(0.05))
-                            .padding(.leading, 36)
+                    // SEÇÃO 1: APARÊNCIA
+                    SettingsGroup(title: "APARÊNCIA", border: glassBorder) {
+                        HStack {
+                            Image(systemName: "sparkles")
+                                .font(.system(size: 10))
+                                .frame(width: 20, height: 20)
+                                .background(RoundedRectangle(cornerRadius: 5).fill(Color.purple))
+                                .foregroundStyle(.white)
                             
-                        NavigationRow(icon: "textformat", color: .gray, title: "Estilo da Fonte", subtitle: "San Francisco Pro")
+                            Text("Estilo Visual")
+                                .font(.system(size: 10, weight: .medium))
+                            
+                            Spacer()
+                            
+                            Picker("", selection: $selectedTheme) {
+                                ForEach(IslandTheme.allCases) { theme in
+                                    Text(theme.rawValue).tag(theme)
+                                }
+                            }
+                            .labelsHidden()
+                            .scaleEffect(0.8)
+                            .frame(width: 140)
+                        }
+                        .padding(8)
                     }
                     
-                    // SEÇÃO 2: FERRAMENTAS (NOVO NA VER. 17.0)
-                    SettingsGroup(title: "FERRAMENTAS") {
-                        ToggleRow(
-                            icon: "doc.badge.arrow.up.fill",
-                            color: .green,
-                            title: "Conversor de Arquivos (Drag & Drop)",
-                            isOn: $enableFileDrop
-                        )
-                        
-                        if enableFileDrop {
+                    // SEÇÃO 2: WIDGETS
+                    SettingsGroup(title: "WIDGETS", border: glassBorder) {
+                        ToggleRow(icon: "cloud.sun.fill", color: .blue, title: "Clima", isOn: $showWeather)
+                        Divider().padding(.leading, 32)
+                        ToggleRow(icon: "calendar", color: .red, title: "Calendário", isOn: $showCalendar)
+                    }
+                    
+                    // SEÇÃO 3: FERRAMENTAS
+                    SettingsGroup(title: "FERRAMENTAS", border: glassBorder) {
+                        ToggleRow(icon: "doc.badge.arrow.up.fill", color: .green, title: "File Drop (Conversor)", isOn: $enableFileDrop)
+                    }
+                    
+                    // SEÇÃO 4: BACKGROUND
+                    SettingsGroup(title: "BACKGROUND", border: glassBorder) {
+                        VStack(alignment: .leading, spacing: 8) {
+                            FileSelectorComponent(text: $staticVideoLink, placeholder: "Vídeo Fechado...")
                             Divider()
-                                .background(Color.white.opacity(0.05))
-                                .padding(.leading, 36)
-                            
-                            HStack {
-                                Text("Arraste arquivos para o notch para converter formatos.")
-                                    .font(.system(size: 10))
-                                    .foregroundStyle(Color.appleLakeGrey)
-                                    .fixedSize(horizontal: false, vertical: true)
-                                Spacer()
-                            }
-                            .padding(12)
+                            FileSelectorComponent(text: $expandedVideoLink, placeholder: "Vídeo Aberto...")
                         }
+                        .padding(8)
                     }
                     
-                    // SEÇÃO 3: BACKGROUND DINÂMICO
-                    SettingsGroup(title: "BACKGROUND DINÂMICO") {
-                        VStack(alignment: .leading, spacing: 12) {
-                            // Configuração Notch Fechado
-                            VStack(alignment: .leading, spacing: 6) {
-                                Label("Modo Repouso (Fechado)", systemImage: "minus.circle.fill")
-                                    .font(.system(size: 11, weight: .medium))
-                                    .foregroundStyle(.white.opacity(0.8))
-                                
-                                // Componente externo FileSelectorComponent
-                                FileSelectorComponent(text: $staticVideoLink, placeholder: "Selecione vídeo mp4/mov...")
-                                
-                                Text("Recomendado: 285x37 pixels (Loop infinito)")
-                                    .font(.system(size: 9))
-                                    .foregroundStyle(Color.appleLakeGrey)
-                            }
-                            
-                            Divider().background(Color.white.opacity(0.05))
-                            
-                            // Configuração Notch Expandido
-                            VStack(alignment: .leading, spacing: 6) {
-                                Label("Modo Expandido (Aberto)", systemImage: "arrow.up.left.and.arrow.down.right.circle.fill")
-                                    .font(.system(size: 11, weight: .medium))
-                                    .foregroundStyle(.white.opacity(0.8))
-                                
-                                FileSelectorComponent(text: $expandedVideoLink, placeholder: "Selecione vídeo mp4/mov...")
-                                
-                                Text("Recomendado: 440x140 pixels")
-                                    .font(.system(size: 9))
-                                    .foregroundStyle(Color.appleLakeGrey)
-                            }
-                        }
-                        .padding(12)
-                    }
-                    
-                    // SEÇÃO 4: SOBRE
-                    SettingsGroup(title: "SOBRE") {
-                        NavigationRow(icon: "info.circle.fill", color: .appleLakeGrey, title: "Versão do Sistema", subtitle: "AppleLake OS 1.0")
+                    // SEÇÃO 5: SOBRE
+                    SettingsGroup(title: "SOBRE", border: glassBorder) {
+                        NavigationRow(icon: "info.circle.fill", color: .gray, title: "Versão", subtitle: "AppleLake 2.3")
                     }
                 }
-                .padding(20)
+                .padding(14)
             }
         }
-        .background(Color.appleLakeBlack)
+        // --- APLICANDO O EFEITO NEOMORFICO LÍQUIDO ---
+        .background(.ultraThinMaterial)
+        .neomorphicGlassRight() // <--- A MÁGICA AQUI
     }
 }
 
-// --- COMPONENTES AUXILIARES DE DESIGN ---
+// --- EXTENSÃO PARA EFEITO NEOMÓRFICO ---
+extension View {
+    func neomorphicGlassRight() -> some View {
+        self.overlay(
+            ZStack {
+                // 1. Sombra Interna na Direita (Profundidade)
+                HStack {
+                    Spacer()
+                    LinearGradient(
+                        stops: [
+                            .init(color: .clear, location: 0.0),
+                            .init(color: .black.opacity(0.05), location: 0.7), // Sombra suave
+                            .init(color: .black.opacity(0.2), location: 1.0)   // Sombra mais escura na borda
+                        ],
+                        startPoint: .leading,
+                        endPoint: .trailing
+                    )
+                    .frame(width: 40) // Largura da área de "curva"
+                }
+                
+                // 2. Bevel de Luz na Borda Direita (Espessura do Vidro)
+                HStack {
+                    Spacer()
+                    Rectangle()
+                        .fill(
+                            LinearGradient(
+                                colors: [.white.opacity(0.1), .white.opacity(0.4), .white.opacity(0.1)],
+                                startPoint: .top,
+                                endPoint: .bottom
+                            )
+                        )
+                        .frame(width: 1) // Borda fina
+                }
+            }
+            .allowsHitTesting(false) // Não interfere no clique
+        )
+    }
+}
+
+// --- COMPONENTES AUXILIARES ---
 
 struct SettingsGroup<Content: View>: View {
     let title: String
+    let border: LinearGradient
     let content: Content
     
-    init(title: String, @ViewBuilder content: () -> Content) {
+    init(title: String, border: LinearGradient, @ViewBuilder content: () -> Content) {
         self.title = title
+        self.border = border
         self.content = content()
     }
     
     var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
+        VStack(alignment: .leading, spacing: 6) {
             Text(title)
-                .font(.system(size: 10, weight: .bold))
-                .foregroundStyle(Color.appleLakeGrey)
-                .padding(.leading, 8)
+                .font(.system(size: 9, weight: .bold))
+                .foregroundStyle(.secondary)
+                .padding(.leading, 6)
             
-            VStack(spacing: 0) {
-                content
-            }
-            .background(Color.appleLakeCharcoal)
-            .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
-            .overlay(
-                RoundedRectangle(cornerRadius: 12, style: .continuous)
-                    .stroke(Color.white.opacity(0.08), lineWidth: 1)
-            )
+            VStack(spacing: 0) { content }
+                .background(.regularMaterial) // Vidro interno
+                .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 10)
+                        .stroke(border, lineWidth: 0.8)
+                )
         }
     }
 }
 
 struct ToggleRow: View {
-    let icon: String
-    let color: Color
-    let title: String
-    @Binding var isOn: Bool
-    
+    let icon: String; let color: Color; let title: String; @Binding var isOn: Bool
     var body: some View {
         HStack {
-            Image(systemName: icon)
-                .font(.system(size: 12))
-                .foregroundStyle(.white)
-                .frame(width: 24, height: 24)
-                .background(RoundedRectangle(cornerRadius: 6).fill(color))
-            
-            Text(title)
-                .font(.system(size: 12, weight: .medium))
-                .foregroundStyle(.white)
-            
+            Image(systemName: icon).font(.system(size: 10)).foregroundStyle(.white)
+                .frame(width: 20, height: 20).background(RoundedRectangle(cornerRadius: 5).fill(color))
+            Text(title).font(.system(size: 10, weight: .medium)).foregroundStyle(.primary)
             Spacer()
-            
-            Toggle("", isOn: $isOn)
-                .toggleStyle(.switch)
-                .labelsHidden()
-                .scaleEffect(0.7)
-        }
-        .padding(10)
+            Toggle("", isOn: $isOn).toggleStyle(.switch).labelsHidden().scaleEffect(0.6)
+        }.padding(8)
     }
 }
 
 struct NavigationRow: View {
-    let icon: String
-    let color: Color
-    let title: String
-    let subtitle: String
-    
+    let icon: String; let color: Color; let title: String; let subtitle: String
     var body: some View {
         HStack {
-            Image(systemName: icon)
-                .font(.system(size: 12))
-                .foregroundStyle(.white)
-                .frame(width: 24, height: 24)
-                .background(RoundedRectangle(cornerRadius: 6).fill(color))
-            
-            Text(title)
-                .font(.system(size: 12, weight: .medium))
-                .foregroundStyle(.white)
-            
+            Image(systemName: icon).font(.system(size: 10)).foregroundStyle(.white)
+                .frame(width: 20, height: 20).background(RoundedRectangle(cornerRadius: 5).fill(color))
+            Text(title).font(.system(size: 10, weight: .medium)).foregroundStyle(.primary)
             Spacer()
-            
-            Text(subtitle)
-                .font(.system(size: 12))
-                .foregroundStyle(Color.appleLakeGrey)
-            
-            Image(systemName: "chevron.right")
-                .font(.system(size: 10, weight: .bold))
-                .foregroundStyle(Color.appleLakeGrey.opacity(0.5))
-        }
-        .padding(10)
+            Text(subtitle).font(.system(size: 10)).foregroundStyle(.secondary)
+        }.padding(8)
     }
 }
