@@ -1,4 +1,5 @@
 import SwiftUI
+import Combine // CORREÇÃO: Import necessário para usar Timer.publish e autoconnect
 
 // MARK: - Data Model for Slides
 struct OnboardingSlide: Identifiable, Equatable {
@@ -14,7 +15,7 @@ struct OnboardingSliderView: View {
     // Estado para controlar o índice atual
     @State private var currentIndex: Int = 0
     
-    // Configuração do Timer: Dispara a cada 5s, mas a animação leva 2s (muito suave)
+    // Configuração do Timer para 4 segundos (tempo de leitura) + Animação de 2 segundos
     private let timer = Timer.publish(every: 5, on: .main, in: .common).autoconnect()
     
     // Dados dos Slides
@@ -27,12 +28,12 @@ struct OnboardingSliderView: View {
     var body: some View {
         GeometryReader { geometry in
             ZStack {
-                // Background Layer (Círculo de luz atrás do vidro)
+                // Background Layer (opcional, para dar contexto ao vidro)
                 Circle()
                     .fill(slides[currentIndex].accentColor.opacity(0.3))
-                    .frame(width: 450, height: 450)
-                    .blur(radius: 90)
-                    .offset(x: -120, y: -120)
+                    .frame(width: 400, height: 400)
+                    .blur(radius: 80)
+                    .offset(x: -100, y: -100)
                     .animation(.easeInOut(duration: 2.0), value: currentIndex)
                 
                 // Content Layer
@@ -44,28 +45,30 @@ struct OnboardingSliderView: View {
                                 .tag(index)
                         }
                     }
-                    .tabViewStyle(.page(indexDisplayMode: .never))
-                    .frame(height: geometry.size.height * 0.75) // Aumentado para 75% da altura
+                    // CORREÇÃO: .page style não existe no macOS.
+                    // Removemos o estilo para usar o padrão, ocultando a UI nativa via lógica ou aceitando o padrão.
+                    // Os indicadores customizados abaixo farão o papel visual.
+                    .frame(height: geometry.size.height * 0.7)
                     
                     // Indicadores de Página Personalizados
                     HStack(spacing: 12) {
                         ForEach(0..<slides.count, id: \.self) { index in
                             Capsule()
                                 .fill(currentIndex == index ? Color.primary : Color.secondary.opacity(0.3))
-                                .frame(width: currentIndex == index ? 30 : 10, height: 10) // Indicadores maiores
-                                .animation(.spring(response: 0.8, dampingFraction: 0.7), value: currentIndex)
+                                .frame(width: currentIndex == index ? 24 : 8, height: 8)
+                                .animation(.spring(response: 0.5, dampingFraction: 0.7), value: currentIndex)
                         }
                     }
-                    .padding(.bottom, 40)
+                    .padding(.bottom, 30)
                 }
                 .padding()
-                // Aplicação do Tema Liquid Glass
+                // Aplicação do Tema Liquid Glass no Container Principal
                 .liquidGlass(cornerRadius: 30)
-                .padding(30) // Margem externa maior para "respirar"
+                .padding(20)
             }
         }
         .onReceive(timer) { _ in
-            withAnimation(.easeInOut(duration: 2.0)) { // ANIMAÇÃO LENTA DE 2 SEGUNDOS
+            withAnimation(.easeInOut(duration: 2.0)) {
                 currentIndex = (currentIndex + 1) % slides.count
             }
         }
@@ -78,11 +81,11 @@ struct SlideContentView: View {
     let size: CGSize
     
     var body: some View {
-        VStack(spacing: 30) { // Espaçamento maior entre elementos
+        VStack(spacing: 24) {
             Image(systemName: slide.systemIcon)
                 .resizable()
                 .aspectRatio(contentMode: .fit)
-                .frame(width: 120, height: 120) // Ícone ampliado para 120pt
+                .frame(width: 100, height: 100)
                 .foregroundStyle(
                     LinearGradient(
                         colors: [slide.accentColor, slide.accentColor.opacity(0.6)],
@@ -90,23 +93,21 @@ struct SlideContentView: View {
                         endPoint: .bottomTrailing
                     )
                 )
-                .shadow(color: slide.accentColor.opacity(0.5), radius: 25, x: 0, y: 15)
-                .padding(.top, 30)
+                .shadow(color: slide.accentColor.opacity(0.5), radius: 20, x: 0, y: 10)
+                .padding(.top, 20)
             
-            VStack(spacing: 16) {
+            VStack(spacing: 12) {
                 Text(slide.title)
-                    .font(.system(size: 42, weight: .bold, design: .rounded)) // Título ampliado
+                    .font(.system(size: 36, weight: .bold, design: .rounded))
                     .foregroundStyle(.primary)
-                    .shadow(color: .black.opacity(0.1), radius: 2, x: 0, y: 2)
                 
                 Text(slide.description)
-                    .font(.title2) // Descrição maior
+                    .font(.title3)
                     .multilineTextAlignment(.center)
                     .foregroundStyle(.secondary)
-                    .padding(.horizontal, 40)
-                    .lineLimit(3)
+                    .padding(.horizontal, 30)
             }
         }
-        .frame(width: size.width, height: size.height * 0.75)
+        .frame(width: size.width, height: size.height * 0.7)
     }
 }

@@ -17,8 +17,9 @@ struct LiquidGlassStyle: ViewModifier {
         content
             .background(
                 ZStack {
-                    // Camada de Material (Blur Nativo do macOS)
-                    config.intensity
+                    // CORREÇÃO: Aplicamos o Material a um Retângulo para que ele seja uma View válida
+                    Rectangle()
+                        .fill(config.intensity)
                         .opacity(0.85)
                     
                     // Gradiente Sutil para simular reflexo de "líquido"
