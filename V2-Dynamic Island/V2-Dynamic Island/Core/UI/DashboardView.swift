@@ -2,19 +2,22 @@
 //  DashboardView.swift
 //  V2-Dynamic Island
 //
-//  Ver. 21.0 - Compact & Refined Dashboard
+//  Ver. 22.0 - Dashboard with Liquid Jello Sliders
 //
 
 import SwiftUI
 
 struct DashboardView: View {
+    // Estados dos Sliders
     @State private var volume: CGFloat = 0.6
     @State private var brightness: CGFloat = 0.8
+    
+    // Configurações de visibilidade
     @AppStorage("showWeather") private var showWeather: Bool = true
     @AppStorage("showCalendar") private var showCalendar: Bool = true
     
     var body: some View {
-        VStack(spacing: 10) { // Espaçamento entre linhas reduzido
+        VStack(spacing: 10) {
             
             // 1. LINHA DE WIDGETS
             if showWeather || showCalendar {
@@ -22,22 +25,27 @@ struct DashboardView: View {
                     if showWeather { WeatherWidget() }
                     if showCalendar { CalendarWidget() }
                 }
-                .frame(height: 44) // Altura fixa reduzida
+                .frame(height: 44)
             }
             
             // 2. MEDIA PLAYER COMPACTO
             CompactMediaView()
             
-            // 3. SLIDERS FINOS
-            HStack(spacing: 8) {
-                CompactSlider(icon: "speaker.wave.3.fill", value: $volume)
-                CompactSlider(icon: "sun.max.fill", value: $brightness)
+            // 3. SLIDERS COM EFEITO JELLO (Implementados Aqui)
+            HStack(spacing: 12) {
+                // Volume
+                LiquidSlider(icon: "speaker.wave.3.fill", value: $volume)
+                
+                // Brilho
+                LiquidSlider(icon: "sun.max.fill", value: $brightness)
             }
+            .padding(.horizontal, 4)
         }
     }
 }
 
-// --- WIDGETS COMPACTOS ---
+// --- SUBCOMPONENTES (WIDGETS) ---
+// Mantidos para garantir que o arquivo esteja completo e funcional
 
 struct WeatherWidget: View {
     var body: some View {
@@ -95,25 +103,5 @@ struct CompactMediaView: View {
         .padding(8)
         .background(.ultraThinMaterial)
         .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
-    }
-}
-
-struct CompactSlider: View {
-    let icon: String; @Binding var value: CGFloat
-    var body: some View {
-        HStack(spacing: 6) {
-            Image(systemName: icon).font(.system(size: 9)).foregroundStyle(.secondary).frame(width: 12)
-            GeometryReader { geo in
-                ZStack(alignment: .leading) {
-                    Capsule().fill(.white.opacity(0.1))
-                    Capsule().fill(.white).frame(width: geo.size.width * value)
-                }
-            }
-            .frame(height: 4)
-        }
-        .padding(8)
-        .frame(height: 28)
-        .background(.ultraThinMaterial)
-        .clipShape(Capsule())
     }
 }
